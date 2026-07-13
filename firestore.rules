@@ -1,0 +1,33 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if the user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if the user is the owner of the document
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    // Helper function to check if the user has administrative privileges based on email pattern
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.email == 'admin@aeva.com' ||
+        request.auth.token.email.matches('.*admin.*')
+      );
+    }
+
+    // Secure all user-specific data under their uid document and sub-collections
+    match /users/{uid} {
+      allow read, write: if isOwner(uid) || isAdmin();
+
+      // Allow access to all nested subcollections (daily_logs, clinical_screening, etc.)
+      match /{document=**} {
+        allow read, write: if isOwner(uid) || isAdmin();
+      }
+    }
+  }
+}

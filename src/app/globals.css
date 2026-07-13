@@ -1,26 +1,88 @@
 @import "tailwindcss";
 
+@theme {
+  /* Warm Organic Palette */
+  --color-cream-50: #FDFBF8;
+  --color-cream-100: #FAF6F0;
+  --color-cream-200: #F4EDE2;
+  --color-cream-300: #EFE4D2;
+  
+  --color-rose-50: #FCFAF9;
+  --color-rose-100: #F7EBEC;
+  --color-rose-200: #F1D7D9;
+  --color-rose-300: #E6BFC3;
+  --color-rose-400: #D9A0A5;
+  --color-rose-500: #CA7D84;
+  
+  --color-sage-50: #F6F8F5;
+  --color-sage-100: #EBF0E9;
+  --color-sage-200: #D8E3D4;
+  --color-sage-500: #A2B99E;
+  --color-sage-600: #839D7F;
+  
+  --color-slate-50: #F9FAFB;
+  --color-slate-100: #F3F4F6;
+  --color-slate-200: #E5E7EB;
+  --color-slate-700: #4B5563;
+  --color-slate-800: #374151;
+  --color-slate-900: #1F2937;
+  
+  --font-serif: var(--font-playfair);
+  --font-sans: var(--font-outfit);
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: #FDFBF8;
+  --foreground: #1F2937;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: #FAF6F0;
+  color: #1F2937;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* Beautiful custom scrollbars for mobile screens */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #E5E7EB;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #D1D5DB;
+}
+
+/* Custom micro-animations for high-fidelity interactive feel */
+@keyframes soft-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.03);
+    opacity: 0.95;
+  }
+}
+
+.pulse-hover:hover {
+  animation: soft-pulse 2s infinite ease-in-out;
+}
+
+.glass-card {
+  background: rgba(253, 251, 248, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(230, 191, 195, 0.3);
+}
+
+.tab-active {
+  color: #CA7D84;
 }
