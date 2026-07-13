@@ -161,6 +161,7 @@ export default function PrivacyVault({ uid, userEmail, onLogout }: PrivacyVaultP
             <span>Firebase & Vercel see ciphertext only</span>
           </div>
         </div>
+      </div>
       {/* Active User Session Details */}
       <div className="bg-white p-5 rounded-3xl border border-cream-200/60 shadow-sm space-y-4">
         <div className="flex justify-between items-center border-b border-cream-100 pb-2">
