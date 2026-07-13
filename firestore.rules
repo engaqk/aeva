@@ -29,5 +29,14 @@ service cloud.firestore {
         allow read, write: if isOwner(uid) || isAdmin();
       }
     }
+
+    // Allow authenticated users to read and create social posts, and update reactions
+    match /social_posts/{postId} {
+      allow read, create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'hugs'])
+      ) || isAdmin();
+      allow delete: if isAdmin();
+    }
   }
 }
