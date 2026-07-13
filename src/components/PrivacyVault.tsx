@@ -161,6 +161,26 @@ export default function PrivacyVault({ uid, userEmail, onLogout }: PrivacyVaultP
             <span>Firebase & Vercel see ciphertext only</span>
           </div>
         </div>
+      {/* Active User Session Details */}
+      <div className="bg-white p-5 rounded-3xl border border-cream-200/60 shadow-sm space-y-4">
+        <div className="flex justify-between items-center border-b border-cream-100 pb-2">
+          <h3 className="font-bold text-xs uppercase tracking-wider text-slate-700">Active Sync Session</h3>
+          <span className="text-[10px] px-2.5 py-0.5 bg-rose-50 border border-rose-100 text-rose-500 rounded-full font-bold">Gmail Connected</span>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <span className="text-[9px] uppercase font-bold text-slate-700 tracking-wider block">Logged In As:</span>
+            <span className="text-xs font-semibold text-slate-800 font-mono">{userEmail || "local_user_default@gmail.com"}</span>
+          </div>
+          <button
+            onClick={handleSignOut}
+            className="px-4 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-bold text-xs transition-colors shadow-sm flex items-center justify-center gap-1.5 focus:outline-none cursor-pointer active:scale-95"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Log Out & Lock Vault</span>
+          </button>
+        </div>
       </div>
 
       {/* Messaging */}
