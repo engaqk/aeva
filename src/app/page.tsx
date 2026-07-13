@@ -104,9 +104,17 @@ export default function Home() {
     );
   }
 
-  // Render Onboarding / Login if no active user session
-  if (!user) {
-    return <Auth onAuthSuccess={handleAuthSuccess} />;
+  // Render Onboarding if no active session OR authenticated but no master encryption key exists
+  const hasMasterKey = user ? (typeof window !== "undefined" && !!localStorage.getItem(`aeva_master_key_${user.uid}`)) : false;
+  
+  if (!user || !hasMasterKey) {
+    return (
+      <Auth 
+        onAuthSuccess={handleAuthSuccess} 
+        initialUserId={user?.uid} 
+        initialUserEmail={user?.email || undefined} 
+      />
+    );
   }
 
   const isAdminUser = !!(user.email && (user.email.toLowerCase().includes("admin") || user.email.toLowerCase() === "admin@aeva.com"));

@@ -7,9 +7,11 @@ import { Shield, Sparkles, Flower, Heart, Activity, Loader2 } from "lucide-react
 
 interface AuthProps {
   onAuthSuccess: (uid: string, userEmail: string) => void;
+  initialUserId?: string;
+  initialUserEmail?: string;
 }
 
-export default function Auth({ onAuthSuccess }: AuthProps) {
+export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEmail = "" }: AuthProps) {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,10 +21,18 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
   const [error, setError] = useState("");
 
   // Onboarding States
-  const [step, setStep] = useState(1); // 1 = Auth, 2 = Mode Select, 3 = Core Metrics, 4 = Key Generation
-  const [userId, setUserId] = useState("");
-  const [userEmailAddress, setUserEmailAddress] = useState("");
+  const [step, setStep] = useState(initialUserId ? 2 : 1);
+  const [userId, setUserId] = useState(initialUserId);
+  const [userEmailAddress, setUserEmailAddress] = useState(initialUserEmail);
   
+  React.useEffect(() => {
+    if (initialUserId && !userId) {
+      setUserId(initialUserId);
+      setUserEmailAddress(initialUserEmail);
+      setStep(2);
+    }
+  }, [initialUserId, initialUserEmail]);
+
   const [mode, setMode] = useState<'cycle_sync' | 'menopause' | 'hormonal_screening'>('cycle_sync');
   const [cycleLength, setCycleLength] = useState(28);
   const [periodLength, setPeriodLength] = useState(5);
