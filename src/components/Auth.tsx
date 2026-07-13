@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { signUp, signIn, signInWithGoogle, saveProfile, UserProfile } from "@/lib/services";
 import { generateMasterKey, deriveKeyFromPassword, bufToHex } from "@/lib/crypto";
+import { isFirebaseConfigured } from "@/lib/firebase";
 import { Shield, Sparkles, Flower, Heart, Activity, Loader2 } from "lucide-react";
 
 interface AuthProps {
@@ -19,6 +20,8 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
   const [usePassphrase, setUsePassphrase] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showMockGoogle, setShowMockGoogle] = useState(false);
+  const [mockEmail, setMockEmail] = useState("");
 
   // Onboarding States
   const [step, setStep] = useState(initialUserId ? 2 : 1);
@@ -71,9 +74,26 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
 
   const handleGoogleAuth = async () => {
     setError("");
+    
+    // Check if Firebase is actually configured
+    if (isFirebaseConfigured) {
+      setLoading(true);
+      try {
+        const user = await signInWithGoogle();
+        await proceedGoogleAuthSuccess(user);
+      } catch (err: any) {
+        setError(err.message || "Google Sign-In failed.");
+        setLoading(false);
+      }
+    } else {
+      // In local mode, show account selector modal
+      setShowMockGoogle(true);
+    }
+  };
+
+  const proceedGoogleAuthSuccess = async (user: { uid: string; email: string | null }) => {
     setLoading(true);
     try {
-      const user = await signInWithGoogle();
       const salt = bufToHex(new TextEncoder().encode((user.email || "google_user") + "_aevasalt"));
       let keyHex = localStorage.getItem(`aeva_master_key_${user.uid}`);
       if (!keyHex) {
@@ -86,10 +106,22 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
         onAuthSuccess(user.uid, user.email || "local_google_user@gmail.com");
       }
     } catch (err: any) {
-      setError(err.message || "Google Sign-In failed.");
+      setError(err.message || "Encryption key initialization failed.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSelectMockGoogleEmail = async (selectedEmail: string) => {
+    setShowMockGoogle(false);
+    // Generate stable UID based on the selected email
+    const uid = "mock_google_uid_" + bufToHex(new TextEncoder().encode(selectedEmail)).substring(0, 12);
+    const user = { uid, email: selectedEmail };
+    
+    // Save locally
+    localStorage.setItem("aeva_user", JSON.stringify(user));
+    
+    await proceedGoogleAuthSuccess(user);
   };
 
   const handleOnboardingSubmit = async () => {
@@ -177,6 +209,83 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
           <div className="flex items-center justify-center gap-2 text-xs text-slate-700 text-center px-4">
             <Shield className="w-4 h-4 text-sage-500" />
             <span>GDPR/HIPAA Strict: Client-side end-to-end encryption active</span>
+          </div>
+        </div>
+      )}
+
+      {/* Mock Google Account Chooser Modal */}
+      {showMockGoogle && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-[380px] rounded-[32px] p-6 shadow-2xl space-y-5 border border-cream-200 animate-scale-up text-left">
+            <div className="text-center space-y-1.5">
+              {/* Google logo colored */}
+              <div className="flex justify-center gap-0.5 text-lg font-bold font-sans">
+                <span className="text-blue-500 font-extrabold">G</span>
+                <span className="text-red-500 font-extrabold">o</span>
+                <span className="text-yellow-500 font-extrabold">o</span>
+                <span className="text-blue-500 font-extrabold">g</span>
+                <span className="text-green-500 font-extrabold">l</span>
+                <span className="text-red-500 font-extrabold">e</span>
+              </div>
+              <h3 className="font-semibold text-sm text-slate-800 text-center">Sign in with Google</h3>
+              <p className="text-[10px] text-slate-700 text-center">to continue to <strong className="text-rose-400">Aeva</strong></p>
+            </div>
+
+            <div className="space-y-2">
+              <span className="text-[9px] uppercase tracking-wider font-bold text-slate-700 block">Choose an account</span>
+              
+              <div className="space-y-1.5 max-h-[180px] overflow-y-auto pr-1">
+                {[
+                  "hasan.aeva@gmail.com",
+                  "guest.user@gmail.com",
+                  "admin@aeva.com"
+                ].map((emailOpt) => (
+                  <button
+                    key={emailOpt}
+                    type="button"
+                    onClick={() => handleSelectMockGoogleEmail(emailOpt)}
+                    className="w-full p-3 bg-cream-100/50 hover:bg-rose-50/30 rounded-xl border border-cream-200/50 text-left text-xs font-semibold text-slate-800 flex items-center justify-between transition-colors focus:outline-none cursor-pointer"
+                  >
+                    <span>{emailOpt}</span>
+                    <span className="text-[8px] uppercase tracking-widest text-slate-700 bg-white px-2 py-0.5 rounded border border-cream-200">Select</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="border-t border-cream-100 pt-3.5 space-y-2">
+              <span className="text-[9px] uppercase tracking-wider font-bold text-slate-700 block">Or use another email</span>
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  value={mockEmail}
+                  onChange={(e) => setMockEmail(e.target.value)}
+                  placeholder="Enter custom Gmail address"
+                  className="flex-1 px-3 py-2.5 bg-cream-100/50 border border-cream-200 rounded-xl text-xs focus:border-rose-300 focus:outline-none text-slate-800"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (mockEmail.includes("@")) {
+                      handleSelectMockGoogleEmail(mockEmail.trim());
+                    } else {
+                      alert("Please enter a valid email address.");
+                    }
+                  }}
+                  className="px-3 py-2 bg-rose-400 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold transition-colors focus:outline-none cursor-pointer"
+                >
+                  Sign In
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowMockGoogle(false)}
+              className="w-full py-2.5 bg-cream-200 hover:bg-cream-300 text-slate-800 text-xs font-semibold rounded-xl transition-colors focus:outline-none cursor-pointer"
+            >
+              Cancel
+            </button>
           </div>
         </div>
       )}
