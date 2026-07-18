@@ -7,11 +7,12 @@ import Dashboard from "@/components/Dashboard";
 import SymptomLog from "@/components/SymptomLog";
 import AIClinic from "@/components/AIClinic";
 import PrivacyVault from "@/components/PrivacyVault";
-import AdminPanel from "@/components/AdminPanel";
+import DevicesPanel from "@/components/DevicesPanel";
 import SocialCircle from "@/components/SocialCircle";
-import { Heart, ClipboardList, Sparkles, Shield, Loader2, BarChart3, Users } from "lucide-react";
+import { Heart, ClipboardList, Sparkles, Shield, Loader2, Watch, Users, Globe } from "lucide-react";
+import { TRANSLATIONS, LanguageCode } from "@/lib/translations";
 
-type TabType = "dashboard" | "symptom_log" | "ai_clinic" | "admin" | "privacy_vault" | "social_circle";
+type TabType = "dashboard" | "symptom_log" | "ai_clinic" | "privacy_vault" | "social_circle" | "devices";
 
 export default function Home() {
   const [user, setUser] = useState<{ uid: string; email: string | null } | null>(null);
@@ -19,6 +20,81 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [authChecking, setAuthChecking] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [language, setLanguage] = useState<LanguageCode>("en");
+
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+
+  // Monitor PWA installation support
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    // Detect standalone app mode
+    const isStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+
+    // Detect iOS
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    const isIOSDevice = /iphone|ipad|ipod/.test(userAgent);
+    setIsIOS(isIOSDevice);
+
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      if (!isStandaloneMode) {
+        setShowInstallBanner(true);
+      }
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+
+    // If iOS and not standalone, show install guidance
+    if (isIOSDevice && !isStandaloneMode) {
+      setShowInstallBanner(true);
+    }
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(`User choice outcome: ${outcome}`);
+      setDeferredPrompt(null);
+      setShowInstallBanner(false);
+    } else if (isIOS) {
+      alert(
+        language === "hi" ? "आईफोन पर ऐप इंस्टॉल करने के लिए: शेयर (Share) आइकन पर टैप करें और फिर 'होम स्क्रीन में जोड़ें' (Add to Home Screen) चुनें।" :
+        language === "gu" ? "આઇફોન પર એપ ઇન્સ્ટોલ કરવા માટે: શેર (Share) આઇકોન પર ટેપ કરો અને પછી 'હોમ સ્ક્રીન પર ઉમેરો' (Add to Home Screen) પસંદ કરો." :
+        language === "fr" ? "Pour installer sur iOS : appuyez sur Partager puis sur 'Sur l'écran d'accueil'." :
+        language === "de" ? "Für iOS: Tippen Sie auf Teilen und dann auf 'Zum Home-Bildschirm'." :
+        language === "es" ? "Para iOS: toque Compartir y luego 'Agregar a pantalla de inicio'." :
+        "To install on iOS: tap the Share button in Safari, then select 'Add to Home Screen'."
+      );
+    }
+  };
+
+  // Load language from LocalStorage on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedLang = localStorage.getItem("aeva_language") as LanguageCode | null;
+      if (savedLang && ["en", "fr", "de", "es", "hi", "gu"].includes(savedLang)) {
+        setLanguage(savedLang);
+      }
+    }
+  }, []);
+
+  const handleLanguageChange = (lang: LanguageCode) => {
+    setLanguage(lang);
+    localStorage.setItem("aeva_language", lang);
+  };
+
+  const t = (key: string) => {
+    return TRANSLATIONS[language]?.[key] || key;
+  };
 
   // Subscribe to authentication state
   useEffect(() => {
@@ -104,106 +180,174 @@ export default function Home() {
     );
   }
 
-  // Render Onboarding if no active session OR authenticated but no master encryption key exists
   const hasMasterKey = user ? (typeof window !== "undefined" && !!localStorage.getItem(`aeva_master_key_${user.uid}`)) : false;
-  
-  if (!user || !hasMasterKey) {
-    return (
-      <Auth 
-        onAuthSuccess={handleAuthSuccess} 
-        initialUserId={user?.uid} 
-        initialUserEmail={user?.email || undefined} 
-      />
-    );
-  }
-
-  const isAdminUser = !!(user.email && (user.email.toLowerCase().includes("admin") || user.email.toLowerCase() === "admin@aeva.com"));
-
-  if (profileLoading || !profile) {
-    return (
-      <div className="flex flex-col items-center justify-center flex-1 space-y-3 bg-cream-50">
-        <Loader2 className="w-8 h-8 text-rose-400 animate-spin" />
-        <p className="text-xs text-slate-700">Accessing Encrypted Profile...</p>
-      </div>
-    );
-  }
+  const isUserAuthenticated = !!user && hasMasterKey;
 
   return (
     <div className="relative flex flex-col flex-1 h-full overflow-hidden bg-cream-50">
       
-      {/* Active Tab Screen Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {activeTab === "dashboard" && (
-          <Dashboard 
-            uid={user.uid} 
-            profile={profile} 
-            onProfileUpdate={handleProfileUpdate} 
-            onNavigate={setActiveTab}
-          />
-        )}
-        {activeTab === "symptom_log" && (
-          <SymptomLog 
-            uid={user.uid} 
-            profile={profile} 
-          />
-        )}
-        {activeTab === "ai_clinic" && (
-          <AIClinic 
-            uid={user.uid} 
-            profile={profile} 
-          />
-        )}
-        {activeTab === "privacy_vault" && (
-          <PrivacyVault 
-            uid={user.uid} 
-            userEmail={user.email || "local_user"} 
-            onLogout={handleLogout} 
-          />
-        )}
-        {activeTab === "social_circle" && (
-          <SocialCircle 
-            uid={user.uid}
-            userEmail={user.email || "local_user"}
-            profile={profile}
-          />
-        )}
-        {activeTab === "admin" && isAdminUser && (
-          <AdminPanel />
-        )}
+      {/* Premium Persistent Top Header Bar */}
+      <div className="w-full h-16 bg-white/90 backdrop-blur-md border-b border-cream-200/50 flex items-center justify-between px-5 shrink-0 z-50 animate-fade-in">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">🌸</span>
+          <span className="font-serif font-bold text-lg tracking-wider text-rose-500">Aeva</span>
+          <span className="text-[8px] tracking-widest font-extrabold text-slate-700 bg-cream-100 px-2 py-0.5 rounded uppercase">Sync</span>
+        </div>
+        
+        {/* Language selector */}
+        <div className="flex items-center gap-1.5 bg-cream-100/50 hover:bg-cream-100 border border-cream-200/40 px-3 py-1.5 rounded-2xl transition-all shadow-xs">
+          <Globe className="w-3.5 h-3.5 text-rose-400" />
+          <select
+            value={language}
+            onChange={(e) => handleLanguageChange(e.target.value as LanguageCode)}
+            className="bg-transparent text-[10px] font-extrabold text-slate-700 focus:outline-none cursor-pointer border-none p-0 pr-1"
+          >
+            <option value="en">English 🇬🇧</option>
+            <option value="fr">Français 🇫🇷</option>
+            <option value="de">Deutsch 🇩🇪</option>
+            <option value="es">Español 🇪🇸</option>
+            <option value="hi">हिन्दी 🇮🇳</option>
+            <option value="gu">ગુજરાતી 🇮🇳</option>
+          </select>
+        </div>
       </div>
 
-      {/* Bottom Tab Navigation Bar */}
-      <div className="absolute bottom-0 left-0 right-0 h-20 bg-white/80 backdrop-blur-lg border-t border-cream-200/50 flex items-center justify-around px-4 pb-4.5 pt-2 z-50">
-        {[
-          { id: "dashboard", label: "Dashboard", icon: Heart },
-          { id: "symptom_log", label: "Log Daily", icon: ClipboardList },
-          { id: "ai_clinic", label: "AI Clinic", icon: Sparkles },
-          { id: "social_circle", label: "Circle", icon: Users },
-          ...(isAdminUser ? [{ id: "admin", label: "Admin", icon: BarChart3 }] : []),
-          { id: "privacy_vault", label: "Privacy", icon: Shield }
-        ].map((tab) => {
-          const isActive = activeTab === tab.id;
-          return (
+      {/* PWA Install Banner */}
+      {showInstallBanner && (
+        <div className="w-full bg-rose-50 border-b border-rose-100 px-4 py-2 flex items-center justify-between text-xs text-rose-800 z-40 animate-slide-in shrink-0">
+          <div className="flex items-center gap-2 text-left">
+            <span>📲</span>
+            <span className="font-semibold text-[10px]">
+              {language === "hi" ? "ऑफलाइन पहुंच के लिए ऐवा ऐप इंस्टॉल करें" :
+               language === "gu" ? "ઓફલાઇન એક્સેસ માટે એવા એપ ઇન્સ્ટોલ કરો" :
+               language === "fr" ? "Installez l'application Aeva pour l'accès hors ligne" :
+               language === "de" ? "Aeva-App für Offline-Zugriff installieren" :
+               language === "es" ? "Instale Aeva para acceder sin conexión" :
+               "Install Aeva App for offline access"}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
             <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as TabType)}
-              className="flex flex-col items-center justify-center w-16 h-12 transition-all group relative"
+              onClick={handleInstallClick}
+              className="bg-rose-500 hover:bg-rose-600 text-white font-extrabold px-3 py-1.5 rounded-full uppercase tracking-wider text-[9px] cursor-pointer transition-colors shadow-xs"
             >
-              <div className={`p-1.5 rounded-2xl transition-all ${
-                isActive ? "bg-rose-50 text-rose-500 scale-110" : "text-slate-700 group-hover:text-slate-800"
-              }`}>
-                <tab.icon className="w-5.5 h-5.5" />
-              </div>
-              <span className={`text-[10px] mt-0.5 font-bold transition-all ${
-                isActive ? "text-rose-500 font-extrabold" : "text-slate-700"
-              }`}>
-                {tab.label}
-              </span>
+              {language === "hi" ? "इंस्टॉल" :
+               language === "gu" ? "ઇન્સ્ટોલ" :
+               language === "fr" ? "Installer" :
+               language === "de" ? "Installieren" :
+               language === "es" ? "Instalar" :
+               "Install"}
             </button>
-          );
-        })}
-      </div>
+            <button
+              onClick={() => setShowInstallBanner(false)}
+              className="text-rose-450 hover:text-rose-600 font-bold p-1 cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
+      {/* Main viewport body */}
+      <div className="flex-1 flex flex-col overflow-hidden relative">
+        {!isUserAuthenticated ? (
+          <Auth 
+            onAuthSuccess={handleAuthSuccess} 
+            initialUserId={user?.uid} 
+            initialUserEmail={user?.email || undefined} 
+          />
+        ) : (profileLoading || !profile) ? (
+          <div className="flex flex-col items-center justify-center flex-1 space-y-3 bg-cream-50">
+            <Loader2 className="w-8 h-8 text-rose-400 animate-spin" />
+            <p className="text-xs text-slate-700">Accessing Encrypted Profile...</p>
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col overflow-hidden relative">
+            {/* Active Tab Screen Area */}
+            <div className="flex-1 flex flex-col overflow-hidden relative">
+              {activeTab === "dashboard" && (
+                <Dashboard 
+                  uid={user.uid} 
+                  profile={profile} 
+                  onProfileUpdate={handleProfileUpdate} 
+                  onNavigate={setActiveTab}
+                  language={language}
+                />
+              )}
+              {activeTab === "symptom_log" && (
+                <SymptomLog 
+                  uid={user.uid} 
+                  profile={profile} 
+                  language={language}
+                />
+              )}
+              {activeTab === "ai_clinic" && (
+                <AIClinic 
+                  uid={user.uid} 
+                  profile={profile} 
+                  language={language}
+                />
+              )}
+              {activeTab === "privacy_vault" && (
+                <PrivacyVault 
+                  uid={user.uid} 
+                  userEmail={user.email || "local_user"} 
+                  onLogout={handleLogout} 
+                  language={language}
+                />
+              )}
+              {activeTab === "social_circle" && (
+                <SocialCircle 
+                  uid={user.uid}
+                  userEmail={user.email || "local_user"}
+                  profile={profile}
+                  language={language}
+                />
+              )}
+              {activeTab === "devices" && (
+                <DevicesPanel language={language} />
+              )}
+            </div>
+
+            {/* Bottom Tab Navigation Bar */}
+            <div className="absolute bottom-0 left-0 right-0 h-20 bg-white/80 backdrop-blur-lg border-t border-cream-200/50 flex items-center justify-around px-4 pb-4.5 pt-2 z-50">
+              {[
+                { id: "dashboard", label: "Dashboard", icon: Heart },
+                { id: "symptom_log", label: "Log Daily", icon: ClipboardList },
+                { id: "ai_clinic", label: "AI Clinic", icon: Sparkles },
+                { id: "devices", label: "Devices", icon: Watch },
+                { id: "social_circle", label: "Circle", icon: Users },
+                { id: "privacy_vault", label: "Privacy", icon: Shield }
+              ].map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as TabType)}
+                    className="flex flex-col items-center justify-center w-16 h-12 transition-all group relative"
+                  >
+                    <div className={`p-1.5 rounded-2xl transition-all ${
+                      isActive ? "bg-rose-50 text-rose-500 scale-110" : "text-slate-700 group-hover:text-slate-800"
+                    }`}>
+                      <tab.icon className="w-5.5 h-5.5" />
+                    </div>
+                    <span className={`text-[10px] mt-0.5 font-bold transition-all ${
+                      isActive ? "text-rose-500 font-extrabold" : "text-slate-700"
+                    }`}>
+                      {tab.id === "dashboard" ? (TRANSLATIONS[language]?.dashboard || "Dashboard") :
+                       tab.id === "symptom_log" ? (TRANSLATIONS[language]?.logDaily || "Log Daily") :
+                       tab.id === "ai_clinic" ? (TRANSLATIONS[language]?.aiClinic || "AI Clinic") :
+                       tab.id === "devices" ? (TRANSLATIONS[language]?.devices || "Devices") :
+                       tab.id === "social_circle" ? (TRANSLATIONS[language]?.circle || "Circle") :
+                       (TRANSLATIONS[language]?.privacy || "Privacy")}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

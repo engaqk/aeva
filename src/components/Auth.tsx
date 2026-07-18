@@ -4,7 +4,67 @@ import React, { useState } from "react";
 import { signUp, signIn, signInWithGoogle, saveProfile, UserProfile } from "@/lib/services";
 import { generateMasterKey, deriveKeyFromPassword, bufToHex } from "@/lib/crypto";
 import { isFirebaseConfigured } from "@/lib/firebase";
-import { Shield, Sparkles, Flower, Heart, Activity, Loader2 } from "lucide-react";
+import { Shield, Sparkles, Flower, Heart, Activity, Loader2, Lock, Check, X, ArrowLeft, ArrowRight, Users, Info } from "lucide-react";
+
+const INTRO_SLIDES = [
+  {
+    title: "Zero-Knowledge Encryption",
+    tagline: "Your intimate data remains 100% yours.",
+    description: "Unlike normal trackers, Aeva uses client-side AES-GCM 256-bit encryption. Your cycle logs, symptoms, and clinical results are encrypted in your browser before ever hitting the database. No leaks, no ads, no subpoenas.",
+    badge: "Incognito by Design",
+    color: "bg-sage-100 text-sage-600 border-sage-200",
+    icon: Shield,
+    image: "/privacy_vault.png",
+    features: [
+      "No central database can decrypt your file",
+      "No trackable cookies or marketing pixels",
+      "GDPR & HIPAA structurally compliant"
+    ]
+  },
+  {
+    title: "Biological Phase Syncing",
+    tagline: "Stop fighting your cycle. Sync with it.",
+    description: "Your estrogen and progesterone levels shift dramatically throughout the month. Aeva's AI guides you when to focus on strength training, when to rest, what to eat, and when your creative focus will peak.",
+    badge: "Hormonal Harmony",
+    color: "bg-rose-100 text-rose-500 border-rose-200",
+    icon: Activity,
+    image: "/phase_syncing.png",
+    features: [
+      "Daily phase-synced training buffers",
+      "Nutrition & craving control guides",
+      "Hormone-aligned energy forecasting"
+    ]
+  },
+  {
+    title: "Clinical Risk Screening",
+    tagline: "Early warning triage at your fingertips.",
+    description: "Evaluate risk indicators for PCOS, Endometriosis, and thyroid imbalances anonymously. Aeva compiles raw symptoms into a certified, encrypted clinical brief that you can print or PDF-share with your OBGYN.",
+    badge: "Medical-Grade Alignment",
+    color: "bg-amber-100 text-amber-600 border-amber-200",
+    icon: Sparkles,
+    image: "/clinical_triage.png",
+    features: [
+      "Validated clinical screening checklists",
+      "One-click doctor-ready PDF reports",
+      "Completely anonymous self-assessments"
+    ]
+  },
+  {
+    title: "Incognito Peer Circles",
+    tagline: "Real community support, zero exposure.",
+    description: "Struggling with menopause flashes or hormonal changes? Connect with women in your exact phase. Post anonymously, share remedies, and exchange support without revealing your name or email.",
+    badge: "Safe Space",
+    color: "bg-purple-100 text-purple-600 border-purple-200",
+    icon: Users,
+    image: "/peer_circle.png",
+    features: [
+      "Phase-restricted peer feed access",
+      "Empathetic 'Hugs' & support reactions",
+      "No profile lookup or search indexing"
+    ]
+  }
+];
+
 
 interface AuthProps {
   onAuthSuccess: (uid: string, userEmail: string) => void;
@@ -13,16 +73,6 @@ interface AuthProps {
 }
 
 export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEmail = "" }: AuthProps) {
-  const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [passphrase, setPassphrase] = useState("");
-  const [usePassphrase, setUsePassphrase] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [showMockGoogle, setShowMockGoogle] = useState(false);
-  const [mockEmail, setMockEmail] = useState("");
-
   // Onboarding States
   const [step, setStep] = useState(initialUserId ? 2 : 1);
   const [userId, setUserId] = useState(initialUserId);
@@ -35,6 +85,43 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
       setStep(2);
     }
   }, [initialUserId, initialUserEmail]);
+
+  const [isLogin, setIsLogin] = useState(true);
+  const [useCredentialsLogin, setUseCredentialsLogin] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [passphrase, setPassphrase] = useState("");
+  const [usePassphrase, setUsePassphrase] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [showMockGoogle, setShowMockGoogle] = useState(false);
+  const [mockEmail, setMockEmail] = useState("");
+  const [showIntro, setShowIntro] = useState(false);
+  const [activeSlide, setActiveSlide] = useState(0);
+  const [landingSlide, setLandingSlide] = useState(0);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const seen = localStorage.getItem("aeva_intro_seen");
+      if (!seen) {
+        setShowIntro(true);
+      }
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (step === 1) {
+      const interval = setInterval(() => {
+        setLandingSlide((prev) => (prev + 1) % 4);
+      }, 5500);
+      return () => clearInterval(interval);
+    }
+  }, [step]);
+
+  const handleCloseIntro = () => {
+    localStorage.setItem("aeva_intro_seen", "true");
+    setShowIntro(false);
+  };
 
   const [mode, setMode] = useState<'cycle_sync' | 'menopause' | 'hormonal_screening'>('cycle_sync');
   const [cycleLength, setCycleLength] = useState(28);
@@ -161,27 +248,267 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
   };
 
   return (
-    <div className="flex flex-col flex-1 p-6 justify-center bg-cream-50 overflow-y-auto">
+    <div className="flex flex-col flex-1 p-6 justify-center bg-cream-50 overflow-y-auto relative">
+      {showIntro && (
+        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md z-[200] flex items-center justify-center p-4">
+          <div className="bg-cream-50 w-full max-w-[390px] rounded-[36px] p-6 shadow-2xl border border-cream-200 flex flex-col space-y-5 relative overflow-hidden animate-scale-up text-left">
+            
+            {/* Top Bar with Skip */}
+            <div className="flex justify-between items-center pb-2 border-b border-cream-200">
+              <div className="flex items-center gap-1">
+                <Flower className="w-5 h-5 text-rose-400 animate-spin-slow" />
+                <span className="font-serif font-bold text-sm tracking-wide text-slate-800">Aeva Health</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseIntro}
+                className="text-xs text-slate-700 hover:text-slate-800 font-bold bg-cream-200 hover:bg-cream-300 px-3 py-1 rounded-full transition-colors cursor-pointer flex items-center gap-1"
+              >
+                Skip <X className="w-3 h-3" />
+              </button>
+            </div>
+
+            {/* Slides Carousel Wrapper */}
+            <div className="flex-1 flex flex-col justify-center min-h-[300px]">
+              {activeSlide < INTRO_SLIDES.length ? (
+                // Feature Slide
+                <div key={activeSlide} className="space-y-4 animate-slide-in">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] uppercase tracking-widest text-rose-500 font-extrabold px-2.5 py-1 bg-rose-50 border border-rose-100 rounded-full font-bold">
+                      {INTRO_SLIDES[activeSlide].badge}
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-700">
+                      Step {activeSlide + 1} of {INTRO_SLIDES.length + 1}
+                    </span>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <h3 className="font-serif text-lg font-bold text-slate-800 leading-tight">
+                      {INTRO_SLIDES[activeSlide].title}
+                    </h3>
+                    <p className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                      {INTRO_SLIDES[activeSlide].tagline}
+                    </p>
+                  </div>
+
+                  {/* Interactive Feature Illustration */}
+                  <div className="relative w-full h-32 rounded-2xl overflow-hidden border border-cream-200/50 shadow-inner bg-cream-100 flex items-center justify-center">
+                    <img
+                      src={INTRO_SLIDES[activeSlide].image}
+                      alt={INTRO_SLIDES[activeSlide].title}
+                      className="w-full h-full object-cover animate-fade-in"
+                    />
+                    <div className="absolute top-2 left-2 p-2 rounded-xl bg-white/95 backdrop-blur-sm shadow-md border border-cream-200/50">
+                      {React.createElement(INTRO_SLIDES[activeSlide].icon, { className: "w-4 h-4 text-rose-500 animate-pulse" })}
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-slate-700 leading-relaxed bg-white/50 p-3 rounded-2xl border border-cream-200/50">
+                    {INTRO_SLIDES[activeSlide].description}
+                  </p>
+
+                  <div className="space-y-1 pl-1">
+                    {INTRO_SLIDES[activeSlide].features.map((feat, i) => (
+                      <div key={i} className="flex items-center gap-2 text-[10.5px] text-slate-800 font-bold">
+                        <Check className="w-3.5 h-3.5 text-sage-500 shrink-0" />
+                        <span>{feat}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                // Comparison Slide
+                <div key="comparison" className="space-y-4 animate-slide-in">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] uppercase tracking-widest text-rose-500 font-extrabold px-2.5 py-1 bg-rose-50 border border-rose-100 rounded-full font-bold font-bold">
+                      The Aeva Difference
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-700">
+                      Step {INTRO_SLIDES.length + 1} of {INTRO_SLIDES.length + 1}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1">
+                    <h3 className="font-serif text-lg font-bold text-slate-800">
+                      Why Aeva stands alone
+                    </h3>
+                    <p className="text-xs text-slate-700 leading-relaxed bg-white/50 p-2.5 rounded-2xl border border-cream-200/50">
+                      Most trackers sell cycle logs to brokers or expose data to subpoenas. Aeva is built as a zero-knowledge cryptography vault.
+                    </p>
+                  </div>
+
+                  <div className="border border-cream-200 rounded-2xl overflow-hidden bg-white/60 shadow-sm">
+                    <div className="grid grid-cols-3 bg-cream-100 p-2 text-[9px] uppercase tracking-wider font-extrabold text-slate-700 text-center border-b border-cream-200">
+                      <div>Comparison</div>
+                      <div className="text-rose-500 font-extrabold">Aeva Vault</div>
+                      <div>Standard Apps</div>
+                    </div>
+                    <div className="divide-y divide-cream-100 text-[10px]">
+                      <div className="grid grid-cols-3 p-2.5 items-center text-center">
+                        <div className="font-semibold text-slate-700 text-left pl-1">Data Privacy</div>
+                        <div className="text-sage-600 font-extrabold flex justify-center items-center gap-0.5"><Lock className="w-3 h-3 text-sage-500" /> AES-256</div>
+                        <div className="text-rose-400">❌ Sell logs</div>
+                      </div>
+                      <div className="grid grid-cols-3 p-2.5 items-center text-center">
+                        <div className="font-semibold text-slate-700 text-left pl-1">AI Insights</div>
+                        <div className="text-slate-800 font-extrabold">⚡ Phase-Synced</div>
+                        <div className="text-slate-700">❌ Calendar only</div>
+                      </div>
+                      <div className="grid grid-cols-3 p-2.5 items-center text-center">
+                        <div className="font-semibold text-slate-700 text-left pl-1">Clinical Tools</div>
+                        <div className="text-slate-800 font-bold">📋 PCOS/Endo</div>
+                        <div className="text-slate-700">❌ Paywalled</div>
+                      </div>
+                      <div className="grid grid-cols-3 p-2.5 items-center text-center">
+                        <div className="font-semibold text-slate-700 text-left pl-1">Community</div>
+                        <div className="text-slate-800 font-bold">👤 Incognito</div>
+                        <div className="text-slate-700">❌ Tracked / Ads</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Bottom Controls */}
+            <div className="space-y-4 pt-2 border-t border-cream-200">
+              
+              {/* Slide Indicators */}
+              <div className="flex justify-center gap-1.5 items-center">
+                {Array.from({ length: INTRO_SLIDES.length + 1 }).map((_, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setActiveSlide(idx)}
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      activeSlide === idx ? "w-6 bg-rose-400" : "w-2 bg-cream-300 hover:bg-cream-400"
+                    }`}
+                    aria-label={`Go to slide ${idx + 1}`}
+                  />
+                ))}
+              </div>
+
+              {/* Navigation buttons */}
+              <div className="flex gap-3 justify-between items-center">
+                {activeSlide > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setActiveSlide(activeSlide - 1)}
+                    className="p-3 bg-cream-200 hover:bg-cream-300 text-slate-800 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer transform active:scale-95"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span>Back</span>
+                  </button>
+                ) : (
+                  <div className="w-1" />
+                )}
+
+                {activeSlide < INTRO_SLIDES.length ? (
+                  <button
+                    type="button"
+                    onClick={() => setActiveSlide(activeSlide + 1)}
+                    className="flex-1 py-3 bg-rose-400 hover:bg-rose-500 text-white rounded-2xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer transform active:scale-95"
+                  >
+                    <span>Next Feature</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleCloseIntro}
+                    className="flex-1 py-3 bg-rose-400 hover:bg-rose-500 text-white rounded-2xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer transform active:scale-95 animate-pulse"
+                  >
+                    <Lock className="w-4 h-4" />
+                    <span>Securely Enter Aeva</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
       {step === 1 && (
         <div className="space-y-6">
-          <div className="text-center space-y-2">
-            <div className="inline-flex p-3 bg-rose-100 rounded-full text-rose-500 mb-2">
+          {/* Main App Brand & Value Pitch */}
+          <div className="text-center space-y-3">
+            <div className="inline-flex p-3 bg-rose-100 rounded-full text-rose-500 mb-1">
               <Flower className="w-8 h-8 animate-spin-slow" />
             </div>
-            <h1 className="font-serif text-4xl text-slate-800 tracking-wide font-semibold">Aeva</h1>
-            <p className="text-sm text-slate-700 max-w-xs mx-auto">
-              Zero-Knowledge AI health synchronization for women.
+            <h1 className="font-serif text-4xl text-slate-800 tracking-wider font-extrabold">Aeva</h1>
+            
+            {/* Target Audience & Purpose Badges */}
+            <div className="flex flex-wrap justify-center gap-1.5 max-w-xs mx-auto">
+              <span className="text-[9px] font-bold uppercase tracking-widest bg-rose-100 text-rose-600 border border-rose-200/50 px-2.5 py-0.5 rounded-full">For Women</span>
+              <span className="text-[9px] font-bold uppercase tracking-widest bg-sage-100 text-sage-600 border border-sage-200/50 px-2.5 py-0.5 rounded-full">Hormonal Syncing</span>
+              <span className="text-[9px] font-bold uppercase tracking-widest bg-amber-100 text-amber-600 border border-amber-200/50 px-2.5 py-0.5 rounded-full">Menopause Care</span>
+            </div>
+            
+            <p className="text-xs text-slate-700 max-w-xs mx-auto leading-relaxed font-bold">
+              The first HIPAA-compliant, Zero-Knowledge AI health ecosystem designed for women who demand absolute privacy for their cycle, symptoms, and medical reports.
             </p>
           </div>
 
-          <div className="bg-white/80 backdrop-blur-md p-8 rounded-3xl border border-rose-100 shadow-sm space-y-6 flex flex-col items-center">
-            <h2 className="text-xl font-medium text-slate-800 text-center font-serif">
-              Unlock Your Health Vault
-            </h2>
+          <div className="bg-white/80 backdrop-blur-md p-6 rounded-3xl border border-rose-100 shadow-sm space-y-5 flex flex-col items-center">
+            {/* Interactive Feature Tour Pitch directly on Landing */}
+            <div className="w-full flex flex-col items-center">
+              <h2 className="text-lg font-bold text-slate-800 text-center font-serif mb-2.5">
+                Unlock Your Health Vault
+              </h2>
+              
+              {/* Tab selectors for quick manual toggle */}
+              <div className="flex w-full gap-1 p-1 bg-cream-100 rounded-2xl border border-cream-200/50 mb-3.5 justify-between">
+                {[
+                  { label: "Privacy", icon: Shield },
+                  { label: "Syncing", icon: Activity },
+                  { label: "Clinical", icon: Sparkles },
+                  { label: "Circle", icon: Users }
+                ].map((tab, idx) => {
+                  const isCurrent = landingSlide === idx;
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setLandingSlide(idx)}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-1 text-[10px] font-bold rounded-xl transition-all cursor-pointer ${
+                        isCurrent
+                          ? "bg-white text-rose-500 shadow-xs border border-rose-100/50 font-extrabold"
+                          : "text-slate-700 hover:text-slate-800"
+                      }`}
+                    >
+                      {React.createElement(tab.icon, { className: "w-3 h-3 shrink-0" })}
+                      <span className="hidden min-[360px]:inline">{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
 
-            <p className="text-xs text-slate-700 text-center leading-relaxed max-w-xs">
-              Securely authenticate using your Gmail account. Your cycle logs, symptoms, and medical reports will remain encrypted locally.
-            </p>
+              {/* Dynamic Feature Visual frame */}
+              <div className="relative w-full h-32 rounded-2xl overflow-hidden border border-cream-200/50 shadow-inner bg-cream-100 mb-3.5 flex items-center justify-center">
+                <img
+                  src={INTRO_SLIDES[landingSlide].image}
+                  alt={INTRO_SLIDES[landingSlide].title}
+                  className="w-full h-full object-cover animate-fade-in"
+                />
+                <div className="absolute top-2 left-2 p-1.5 rounded-xl bg-white/95 backdrop-blur-sm shadow border border-cream-200/50">
+                  {React.createElement(INTRO_SLIDES[landingSlide].icon, { className: "w-3.5 h-3.5 text-rose-500 animate-pulse" })}
+                </div>
+              </div>
+
+              {/* Tagline & Pitch Details */}
+              <div className="space-y-1 text-center mb-1.5 min-h-[72px] flex flex-col justify-center px-1">
+                <h3 className="font-serif text-sm font-bold text-slate-800 leading-tight">
+                  {INTRO_SLIDES[landingSlide].title}
+                </h3>
+                <p className="text-[9px] font-bold text-slate-700 uppercase tracking-wider leading-none">
+                  {INTRO_SLIDES[landingSlide].tagline}
+                </p>
+                <p className="text-[11px] text-slate-700 leading-relaxed max-w-xs mx-auto">
+                  {INTRO_SLIDES[landingSlide].description}
+                </p>
+              </div>
+            </div>
 
             {error && (
               <div className="w-full p-3 bg-rose-50 border border-rose-200 text-xs text-rose-600 rounded-xl text-center">
@@ -203,6 +530,71 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
                 </svg>
               )}
               <span>Gmail Direct Login</span>
+            </button>
+
+            {/* Traditional Credentials Login Option */}
+            {!useCredentialsLogin ? (
+              <button
+                type="button"
+                onClick={() => setUseCredentialsLogin(true)}
+                className="text-xs text-slate-700 hover:text-slate-800 transition-colors flex items-center justify-center gap-1.5 cursor-pointer mt-1 font-semibold active:scale-95 transform"
+              >
+                <Lock className="w-3.5 h-3.5 text-slate-600" />
+                <span>Sign in with Username/Password</span>
+              </button>
+            ) : (
+              <form onSubmit={handleAuth} className="w-full space-y-3 pt-3.5 border-t border-cream-200/50">
+                <div className="space-y-1 text-left">
+                  <label className="text-[9px] uppercase tracking-wider font-bold text-slate-700">Username / Email</label>
+                  <input
+                    type="text"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="e.g. admin"
+                    className="w-full px-3 py-2.5 bg-cream-100/50 border border-cream-200 rounded-xl text-xs focus:border-rose-300 focus:outline-none text-slate-800"
+                  />
+                </div>
+                <div className="space-y-1 text-left">
+                  <label className="text-[9px] uppercase tracking-wider font-bold text-slate-700">Password</label>
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full px-3 py-2.5 bg-cream-100/50 border border-cream-200 rounded-xl text-xs focus:border-rose-300 focus:outline-none text-slate-800"
+                  />
+                </div>
+                
+                <div className="flex gap-2 pt-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setUseCredentialsLogin(false)}
+                    className="flex-1 py-2.5 bg-cream-200 hover:bg-cream-300 text-slate-800 text-xs font-bold rounded-2xl transition-all cursor-pointer active:scale-95 transform"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-2.5 bg-rose-400 hover:bg-rose-500 text-white text-xs font-bold rounded-2xl transition-all cursor-pointer active:scale-95 transform shadow-sm"
+                  >
+                    Verify & Sign In
+                  </button>
+                </div>
+              </form>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveSlide(0);
+                setShowIntro(true);
+              }}
+              className="text-xs text-rose-500 font-semibold hover:text-rose-600 transition-colors flex items-center justify-center gap-1.5 cursor-pointer mt-1 group"
+            >
+              <Info className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+              <span>See why Aeva is different (Intro Tour)</span>
             </button>
           </div>
 
@@ -231,37 +623,15 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
               <p className="text-[10px] text-slate-700 text-center">to continue to <strong className="text-rose-400">Aeva</strong></p>
             </div>
 
-            <div className="space-y-2">
-              <span className="text-[9px] uppercase tracking-wider font-bold text-slate-700 block">Choose an account</span>
-              
-              <div className="space-y-1.5 max-h-[180px] overflow-y-auto pr-1">
-                {[
-                  "hasan.aeva@gmail.com",
-                  "guest.user@gmail.com",
-                  "admin@aeva.com"
-                ].map((emailOpt) => (
-                  <button
-                    key={emailOpt}
-                    type="button"
-                    onClick={() => handleSelectMockGoogleEmail(emailOpt)}
-                    className="w-full p-3 bg-cream-100/50 hover:bg-rose-50/30 rounded-xl border border-cream-200/50 text-left text-xs font-semibold text-slate-800 flex items-center justify-between transition-colors focus:outline-none cursor-pointer"
-                  >
-                    <span>{emailOpt}</span>
-                    <span className="text-[8px] uppercase tracking-widest text-slate-700 bg-white px-2 py-0.5 rounded border border-cream-200">Select</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="border-t border-cream-100 pt-3.5 space-y-2">
-              <span className="text-[9px] uppercase tracking-wider font-bold text-slate-700 block">Or use another email</span>
-              <div className="flex gap-2">
+            <div className="space-y-4">
+              <span className="text-[9px] uppercase tracking-wider font-bold text-slate-705 block text-center">Enter your Google Account email</span>
+              <div className="flex flex-col gap-2.5">
                 <input
                   type="email"
                   value={mockEmail}
                   onChange={(e) => setMockEmail(e.target.value)}
-                  placeholder="Enter custom Gmail address"
-                  className="flex-1 px-3 py-2.5 bg-cream-100/50 border border-cream-200 rounded-xl text-xs focus:border-rose-300 focus:outline-none text-slate-800"
+                  placeholder="name@gmail.com"
+                  className="w-full px-3.5 py-3 bg-cream-100/50 border border-cream-200 rounded-xl text-xs focus:border-rose-300 focus:outline-none text-slate-800"
                 />
                 <button
                   type="button"
@@ -272,9 +642,9 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
                       alert("Please enter a valid email address.");
                     }
                   }}
-                  className="px-3 py-2 bg-rose-400 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold transition-colors focus:outline-none cursor-pointer"
+                  className="w-full py-3 bg-rose-400 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-colors focus:outline-none cursor-pointer text-center"
                 >
-                  Sign In
+                  Continue
                 </button>
               </div>
             </div>

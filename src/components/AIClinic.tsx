@@ -4,13 +4,15 @@ import React, { useState, useEffect, useRef } from "react";
 import { getRecentDailyLogs, saveAssessment, getAssessment, UserProfile, AssessmentData } from "@/lib/services";
 import { encryptJSON, decryptJSON } from "@/lib/crypto";
 import { Sparkles, FileText, Send, ShieldAlert, ShieldCheck, Heart, AlertCircle, Download, Printer, RefreshCw, Loader2, ArrowRight } from "lucide-react";
+import { TRANSLATIONS, LanguageCode } from "@/lib/translations";
 
 interface AIClinicProps {
   uid: string;
   profile: UserProfile;
+  language?: any;
 }
 
-export default function AIClinic({ uid, profile }: AIClinicProps) {
+export default function AIClinic({ uid, profile, language = "en" }: AIClinicProps) {
   const [screeningStep, setScreeningStep] = useState(1); // 1 = Explainer, 2 = Questionnaire, 3 = Generating, 4 = Report View
   const [loading, setLoading] = useState(false);
   const [streamText, setStreamText] = useState("");
@@ -18,10 +20,27 @@ export default function AIClinic({ uid, profile }: AIClinicProps) {
   const [triageReport, setTriageReport] = useState("");
   const [generating, setGenerating] = useState(false);
 
+  const t = (key: string) => {
+    return TRANSLATIONS[language as LanguageCode]?.[key] || TRANSLATIONS["en"]?.[key] || key;
+  };
+
+  const getInitialMessage = () => {
+    if (language === "hi") return "नमस्ते, मैं आपकी ऐवा वेलनेस कोच हूँ। अपने चक्र, पोषण या लक्षणों के बारे में कुछ भी पूछें।";
+    if (language === "gu") return "નમસ્તે, હું તમારી એવા વેલનેસ કોચ છું. તમારી માસિક ચક્ર, પોષણ કે લક્ષણો વિશે કંઈપણ પૂછો.";
+    if (language === "fr") return "Bonjour, je suis votre coach bien-être Aeva. Posez-moi des questions sur vos cycles.";
+    if (language === "de") return "Hallo, ich bin Ihr Aeva Wellness Coach. Fragen Sie mich alles über Ihren Zyklus.";
+    if (language === "es") return "Hola, soy tu coach de bienestar Aeva. Pregúntame lo que quieras sobre tu ciclo.";
+    return "Hello, I am your Aeva Cycle-Syncing & Wellness Coach. Ask me anything about your current phase, nutrition needs, or symptoms. (Your data is decrypted locally before use).";
+  };
+
   // Chat window states
-  const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([
-    { role: 'assistant', content: "Hello, I am your Aeva Cycle-Syncing & Wellness Coach. Ask me anything about your current phase, nutrition needs, or symptoms. (Your data is decrypted locally before use)." }
-  ]);
+  const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+
+  useEffect(() => {
+    setChatMessages([
+      { role: 'assistant', content: getInitialMessage() }
+    ]);
+  }, [language]);
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -277,8 +296,15 @@ export default function AIClinic({ uid, profile }: AIClinicProps) {
       
       {/* Header */}
       <div>
-        <span className="text-[10px] tracking-widest uppercase font-semibold text-slate-700">Medical AI Link</span>
-        <h1 className="font-serif text-2xl font-bold text-slate-800">AI Clinic</h1>
+        <span className="text-[10px] tracking-widest uppercase font-semibold text-slate-700">
+          {language === "hi" ? "चिकित्सा एआई लिंक" :
+           language === "gu" ? "મેડિકલ AI લિંક" :
+           language === "fr" ? "Lien Médical IA" :
+           language === "de" ? "Medizinischer KI-Link" :
+           language === "es" ? "Enlace Médico IA" :
+           "Medical AI Link"}
+        </span>
+        <h1 className="font-serif text-2xl font-bold text-slate-800">{t("aiClinic")}</h1>
       </div>
 
       {/* Main Tabs: Triage Triage or Coaching Chat */}
@@ -288,13 +314,23 @@ export default function AIClinic({ uid, profile }: AIClinicProps) {
         <div className="bg-white p-5 rounded-3xl border border-cream-200/60 shadow-sm space-y-4">
           <h2 className="font-serif text-lg font-bold text-slate-800 flex items-center gap-1.5">
             <Sparkles className="w-5 h-5 text-rose-400" />
-            Clinical Hormonal Triage
+            {language === "hi" ? "नैदानिक हार्मोनल स्क्रीनिंग" :
+             language === "gu" ? "ક્લિનિકલ હોર્મોનલ સ્ક્રીનીંગ" :
+             language === "fr" ? "Triage Hormonal Clinique" :
+             language === "de" ? "Klinische Hormon-Triage" :
+             language === "es" ? "Triage Hormonal Clínico" :
+             "Clinical Hormonal Triage"}
           </h2>
 
           {screeningStep === 1 && (
             <div className="space-y-4">
               <p className="text-xs text-slate-700 leading-relaxed">
-                Scan your logged daily biomarkers and complete a quick survey to analyze your probability layout for hormonal disorders like <strong>PCOS</strong>, <strong>Endometriosis</strong>, or <strong>Thyroid disparities</strong>.
+                {language === "hi" ? "PCOS, एंडोमेट्रियोसिस, या थायराइड असमानताओं जैसे हार्मोनल विकारों के लिए अपनी संभावनाओं का विश्लेषण करने के लिए एक त्वरित सर्वेक्षण पूरा करें।" :
+                 language === "gu" ? "PCOS, એન્ડોમેટ્રિઓસિસ અથવા થાઇરોઇડની અસમાનતા જેવા હોર્મોનલ વિકારો માટે તમારી પ્રોબેબિલિટીનું વિશ્લેષણ કરવા માટે ઝડપી સર્વેક્ષણ પૂર્ણ કરો." :
+                 language === "fr" ? "Complétez une enquête rapide pour analyser votre probabilité de troubles hormonaux comme le SOPK, l'endométriose ou les problèmes de thyroïde." :
+                 language === "de" ? "Füllen Sie eine kurze Umfrage aus, um Ihre Wahrscheinlichkeit für hormonelle Störungen wie PCOS, Endometriose oder Schilddrüsenprobleme zu analysieren." :
+                 language === "es" ? "Complete una encuesta rápida para analizar su probabilidad de trastornos hormonales como SOPK, endometriosis o problemas tiroideos." :
+                 "Scan your logged daily biomarkers and complete a quick survey to analyze your probability layout for hormonal disorders like PCOS, Endometriosis, or Thyroid disparities."}
               </p>
               <div className="p-3.5 bg-sage-50 rounded-2xl border border-sage-100 flex gap-2">
                 <ShieldCheck className="w-5 h-5 text-sage-600 shrink-0 mt-0.5" />
@@ -304,9 +340,14 @@ export default function AIClinic({ uid, profile }: AIClinicProps) {
               </div>
               <button
                 onClick={handleStartScreening}
-                className="w-full py-3 bg-rose-400 hover:bg-rose-500 text-white rounded-2xl font-semibold text-xs transition-colors flex items-center justify-center gap-1"
+                className="w-full py-3 bg-rose-400 hover:bg-rose-500 text-white rounded-2xl font-semibold text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
               >
-                Begin Structured Screening
+                {language === "hi" ? "स्क्रीनिंग शुरू करें" :
+                 language === "gu" ? "સ્ક્રિનિંગ શરૂ કરો" :
+                 language === "fr" ? "Commencer le Triage" :
+                 language === "de" ? "Triage starten" :
+                 language === "es" ? "Iniciar Triage" :
+                 "Begin Structured Screening"}
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -490,7 +531,14 @@ export default function AIClinic({ uid, profile }: AIClinicProps) {
         <div className="flex-1 bg-white rounded-3xl border border-cream-200/60 shadow-sm flex flex-col overflow-hidden min-h-[300px]">
           <div className="p-4 bg-cream-100/50 border-b border-cream-200 flex items-center gap-2 shrink-0">
             <Heart className="w-4 h-4 text-rose-400" />
-            <h3 className="font-serif text-sm font-bold text-slate-800">Decrypted Coach Chat</h3>
+            <h3 className="font-serif text-sm font-bold text-slate-800">
+              {language === "hi" ? "सुरक्षित वेलनेस कोच बातचीत" :
+               language === "gu" ? "સુરક્ષિત વેલનેસ કોચ વાતચીત" :
+               language === "fr" ? "Discussion Bien-être Sécurisée" :
+               language === "de" ? "Gesicherter Wellness-Chat" :
+               language === "es" ? "Charla de Bienestar Segura" :
+               "Decrypted Coach Chat"}
+            </h3>
           </div>
 
           {/* Messages Container */}
@@ -522,13 +570,20 @@ export default function AIClinic({ uid, profile }: AIClinicProps) {
               type="text"
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
-              placeholder="Ask about cycle tips or foods..."
-              className="flex-1 px-4 py-3 rounded-2xl bg-white border border-cream-200 focus:border-rose-300 focus:outline-none text-xs"
+              placeholder={
+                language === "hi" ? "साइकिल टिप्स या खाद्य पदार्थों के बारे में पूछें..." :
+                language === "gu" ? "માસિક ચક્ર ટીપ્સ અથવા ખોરાક વિશે પૂછો..." :
+                language === "fr" ? "Posez des questions sur le cycle ou l'alimentation..." :
+                language === "de" ? "Fragen Sie nach Zyklustipps oder Lebensmitteln..." :
+                language === "es" ? "Pregunte sobre consejos de ciclo o alimentos..." :
+                "Ask about cycle tips or foods..."
+              }
+              className="flex-1 px-4 py-3 rounded-2xl bg-white border border-cream-200 focus:border-rose-300 focus:outline-none text-xs text-slate-800"
             />
             <button
               type="submit"
               disabled={chatLoading || !chatInput.trim()}
-              className="p-3 bg-rose-400 hover:bg-rose-500 text-white rounded-2xl transition-colors disabled:bg-rose-300 flex items-center justify-center shadow-sm"
+              className="p-3 bg-rose-400 hover:bg-rose-500 text-white rounded-2xl transition-colors disabled:bg-rose-300 flex items-center justify-center shadow-sm cursor-pointer"
             >
               <Send className="w-4 h-4" />
             </button>

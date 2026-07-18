@@ -22,6 +22,25 @@ import {
   where
 } from "firebase/firestore";
 
+// Helper to wrap promises with a timeout to prevent hanging on misconfigured Firestore databases
+function withTimeout<T>(promise: Promise<T>, ms = 2000): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error("Firestore database connection timed out"));
+    }, ms);
+    promise
+      .then((res) => {
+        clearTimeout(timer);
+        resolve(res);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
+}
+
+
 export interface UserProfile {
   mode: 'cycle_sync' | 'menopause' | 'hormonal_screening';
   cycleLength?: number;
@@ -105,12 +124,40 @@ export async function signUp(email: string, pass: string) {
 }
 
 export async function signIn(email: string, pass: string) {
+  const lowerEmail = email.toLowerCase();
+  
   if (isFirebaseConfigured && auth) {
-    const cred = await signInWithEmailAndPassword(auth, email, pass);
-    return { uid: cred.user.uid, email: cred.user.email };
+    const targetEmail = (lowerEmail === "admin") ? "admin@aeva.com" : lowerEmail;
+    try {
+      try {
+        const cred = await signInWithEmailAndPassword(auth, targetEmail, pass);
+        return { uid: cred.user.uid, email: cred.user.email };
+      } catch (err: any) {
+        // If administrator credentials, auto-create the user inside Firebase Auth if missing
+        if (
+          (targetEmail === "admin@aeva.com" && pass === "admin53") &&
+          (err.code === "auth/user-not-found" || err.code === "auth/invalid-credential" || err.code === "auth/cannot-find-user")
+        ) {
+          console.log("Admin account not found in Firebase. Auto-creating admin user...");
+          const cred = await createUserWithEmailAndPassword(auth, targetEmail, pass);
+          return { uid: cred.user.uid, email: cred.user.email };
+        }
+        throw err;
+      }
+    } catch (e: any) {
+      // Local fallback in case Firebase is completely blocked
+      if ((lowerEmail === "admin" || lowerEmail === "admin@aeva.com") && pass === "admin53") {
+        console.warn("Firebase admin sign-in failed, falling back to local simulation:", e.message);
+        const user = { uid: "evaluation_admin_uid", email: "admin@aeva.com" };
+        localStorage.setItem("aeva_user", JSON.stringify(user));
+        triggerLocalAuthChange();
+        return user;
+      }
+      throw e;
+    }
   } else {
     // Local Mode
-    const user = { uid: "local_user_default", email };
+    const user = { uid: "local_user_default", email: email.includes("@") ? email : `${email}@aeva.com` };
     localStorage.setItem("aeva_user", JSON.stringify(user));
     triggerLocalAuthChange();
     return user;
@@ -121,6 +168,7 @@ export async function signInWithGoogle() {
   if (isFirebaseConfigured && auth) {
     try {
       const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
       const cred = await signInWithPopup(auth, provider);
       return { uid: cred.user.uid, email: cred.user.email };
     } catch (e: any) {
@@ -158,7 +206,7 @@ export async function saveProfile(uid: string, profile: UserProfile, email?: str
       if (email) {
         data.email = email;
       }
-      await setDoc(userDocRef, data, { merge: true });
+      await withTimeout(setDoc(userDocRef, data, { merge: true }), 2000);
     } catch (e) {
       console.warn("Firestore saveProfile failed, falling back to LocalStorage:", e);
       localStorage.setItem(`aeva_profile_${uid}`, JSON.stringify(profile));
@@ -172,7 +220,7 @@ export async function getProfile(uid: string): Promise<UserProfile | null> {
   if (isFirebaseConfigured && db) {
     try {
       const userDocRef = doc(db, "users", uid);
-      const docSnap = await getDoc(userDocRef);
+      const docSnap = await withTimeout(getDoc(userDocRef), 2000);
       if (docSnap.exists()) {
         const data = docSnap.data();
         return data.profile || null;
@@ -202,7 +250,7 @@ export async function saveDailyLog(uid: string, dateStr: string, log: DailyLogDa
           iv: (log as any).iv || ""
         }
       };
-      await setDoc(logDocRef, logData, { merge: true });
+      await withTimeout(setDoc(logDocRef, logData, { merge: true }), 2000);
     } catch (e) {
       console.warn("Firestore saveDailyLog failed, falling back to LocalStorage:", e);
       const allLogs = JSON.parse(localStorage.getItem(`aeva_logs_${uid}`) || "{}");
@@ -234,7 +282,7 @@ export async function getDailyLog(uid: string, dateStr: string): Promise<DailyLo
   if (isFirebaseConfigured && db) {
     try {
       const logDocRef = doc(db, "users", uid, "daily_logs", dateStr);
-      const docSnap = await getDoc(logDocRef);
+      const docSnap = await withTimeout(getDoc(logDocRef), 2000);
       if (docSnap.exists()) {
         const data = docSnap.data();
         return {
@@ -264,7 +312,7 @@ export async function getRecentDailyLogs(uid: string, daysLimit = 90): Promise<{
     try {
       const logsColRef = collection(db, "users", uid, "daily_logs");
       const q = query(logsColRef, orderBy("metadata.updatedTimestamp", "desc"), limit(daysLimit));
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await withTimeout(getDocs(q), 2000);
       const logs: { dateStr: string; log: DailyLogData }[] = [];
       querySnapshot.forEach((docSnap) => {
         const data = docSnap.data();
@@ -319,12 +367,12 @@ export async function saveAssessment(uid: string, assessment: AssessmentData) {
   if (isFirebaseConfigured && db) {
     try {
       const screeningRef = doc(db, "users", uid, "clinical_screening", "pcos_assessment");
-      await setDoc(screeningRef, {
+      await withTimeout(setDoc(screeningRef, {
         encryptedAssessmentData: assessment.encryptedAssessmentData,
         screeningStatus: assessment.screeningStatus,
         generatedAt: Timestamp.now(),
         iv: (assessment as any).iv || ""
-      });
+      }), 2000);
     } catch (e) {
       console.warn("Firestore saveAssessment failed, falling back to LocalStorage:", e);
       localStorage.setItem(`aeva_assessment_${uid}`, JSON.stringify({
@@ -348,7 +396,7 @@ export async function getAssessment(uid: string): Promise<AssessmentData | null>
   if (isFirebaseConfigured && db) {
     try {
       const screeningRef = doc(db, "users", uid, "clinical_screening", "pcos_assessment");
-      const docSnap = await getDoc(screeningRef);
+      const docSnap = await withTimeout(getDoc(screeningRef), 2000);
       if (docSnap.exists()) {
         const data = docSnap.data();
         return {
@@ -382,7 +430,7 @@ export async function getAllUsers(): Promise<AdminUserRecord[]> {
   if (isFirebaseConfigured && db) {
     try {
       const usersColRef = collection(db, "users");
-      const querySnapshot = await getDocs(usersColRef);
+      const querySnapshot = await withTimeout(getDocs(usersColRef), 2000);
       const users: AdminUserRecord[] = [];
       
       for (const userDoc of querySnapshot.docs) {
@@ -392,13 +440,13 @@ export async function getAllUsers(): Promise<AdminUserRecord[]> {
         
         // Get log count
         const logsColRef = collection(db, "users", uid, "daily_logs");
-        const logsSnap = await getDocs(logsColRef).catch(() => ({ size: 0 }));
+        const logsSnap = await withTimeout(getDocs(logsColRef), 1000).catch(() => ({ size: 0 }));
         
         users.push({
           uid,
           email: data.email || `${uid.substring(0, 8)}@aeva.com`,
           profile,
-          logCount: logsSnap.size
+          logCount: (logsSnap as any).size || 0
         });
       }
       return users;
@@ -407,40 +455,11 @@ export async function getAllUsers(): Promise<AdminUserRecord[]> {
       return [];
     }
   } else {
-    // Local Mode: Seed and return mock users
+    // Local Mode: Retrieve users from LocalStorage
     let localUsers = localStorage.getItem("aeva_admin_users");
     if (!localUsers) {
-      const mockUsers: AdminUserRecord[] = [
-        {
-          uid: "mock_user_sarah",
-          email: "sarah@aeva.com",
-          profile: { mode: "cycle_sync", cycleLength: 28, periodLength: 5, lastPeriodStart: "2026-07-01" },
-          logCount: 14
-        },
-        {
-          uid: "mock_user_elena",
-          email: "elena.menopause@aeva.com",
-          profile: { mode: "menopause" },
-          logCount: 27
-        },
-        {
-          uid: "mock_user_chloe",
-          email: "chloe.screening@aeva.com",
-          profile: { mode: "hormonal_screening" },
-          logCount: 9
-        }
-      ];
-      localStorage.setItem("aeva_admin_users", JSON.stringify(mockUsers));
-      // Seed mock log context
-      localStorage.setItem(`aeva_logs_mock_user_sarah`, JSON.stringify({
-        "2026-07-12": { encryptedPayload: "cipher", metadata: { phaseContext: "Follicular Phase", updatedTimestamp: new Date().toISOString() } },
-        "2026-07-11": { encryptedPayload: "cipher", metadata: { phaseContext: "Follicular Phase", updatedTimestamp: new Date().toISOString() } }
-      }));
-      localStorage.setItem(`aeva_logs_mock_user_elena`, JSON.stringify({
-        "2026-07-12": { encryptedPayload: "cipher", metadata: { phaseContext: "Menopause Support", updatedTimestamp: new Date().toISOString() } },
-        "2026-07-11": { encryptedPayload: "cipher", metadata: { phaseContext: "Menopause Support", updatedTimestamp: new Date().toISOString() } }
-      }));
-      localUsers = JSON.stringify(mockUsers);
+      localUsers = "[]";
+      localStorage.setItem("aeva_admin_users", localUsers);
     }
     return JSON.parse(localUsers);
   }
@@ -471,7 +490,7 @@ export async function saveSocialPost(
   if (isFirebaseConfigured && db) {
     try {
       const postsCol = collection(db, "social_posts");
-      await addDoc(postsCol, {
+      await withTimeout(addDoc(postsCol, {
         uid,
         username,
         userMode,
@@ -481,7 +500,7 @@ export async function saveSocialPost(
         likes: 0,
         hugs: 0,
         timestamp: Timestamp.now()
-      });
+      }), 2000);
     } catch (e) {
       console.warn("Firestore saveSocialPost failed, falling back to LocalStorage:", e);
       fallbackLocalPost(uid, username, userMode, content, photoHex, photoType);
@@ -520,7 +539,7 @@ export async function getSocialPosts(userMode: string): Promise<SocialPost[]> {
     try {
       const postsCol = collection(db, "social_posts");
       const q = query(postsCol, where("userMode", "==", userMode), orderBy("timestamp", "desc"), limit(40));
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await withTimeout(getDocs(q), 2000);
       const posts: SocialPost[] = [];
       querySnapshot.forEach((docSnap) => {
         const data = docSnap.data();
@@ -595,11 +614,11 @@ export async function reactToPost(postId: string, reactionType: "likes" | "hugs"
   if (isFirebaseConfigured && db && !postId.startsWith("local_post_") && !postId.startsWith("seed_post_")) {
     try {
       const postRef = doc(db, "social_posts", postId);
-      const postSnap = await getDoc(postRef);
+      const postSnap = await withTimeout(getDoc(postRef), 2000);
       if (postSnap.exists()) {
         const data = postSnap.data();
         const currentCount = data[reactionType] || 0;
-        await setDoc(postRef, { [reactionType]: currentCount + 1 }, { merge: true });
+        await withTimeout(setDoc(postRef, { [reactionType]: currentCount + 1 }, { merge: true }), 2000);
       }
     } catch (e) {
       console.warn("Firestore reactToPost failed, updating local state instead:", e);
