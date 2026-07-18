@@ -743,17 +743,41 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
               </form>
             )}
 
-            <button
-              type="button"
-              onClick={() => {
-                setActiveSlide(0);
-                setShowIntro(true);
-              }}
-              className="text-xs text-rose-500 font-semibold hover:text-rose-600 transition-colors flex items-center justify-center gap-1.5 cursor-pointer mt-1 group"
-            >
-              <Info className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
-              <span>See why Aeva is different (Intro Tour)</span>
-            </button>
+            <div className="flex flex-col gap-2.5 mt-2 items-center w-full">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveSlide(0);
+                  setShowIntro(true);
+                }}
+                className="text-xs text-rose-500 font-semibold hover:text-rose-600 transition-colors flex items-center justify-center gap-1.5 cursor-pointer group"
+              >
+                <Info className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+                <span>
+                  {language === "hi" ? "देखें कि ऐवा अलग क्यों है (इंट्रो टूर)" :
+                   language === "gu" ? "જુઓ શા માટે એવા અલગ છે (પ્રારંભિક ટૂર)" :
+                   language === "fr" ? "Pourquoi Aeva est différent (Présentation)" :
+                   language === "de" ? "Warum Aeva anders ist (Tour)" :
+                   language === "es" ? "Descubra Aeva (Presentación)" :
+                   "See why Aeva is different (Intro Tour)"}
+                </span>
+              </button>
+
+              <a
+                href="/admin"
+                className="text-[11px] text-slate-700 hover:text-rose-500 transition-colors flex items-center justify-center gap-1.5 cursor-pointer font-bold underline"
+              >
+                <Shield className="w-3.5 h-3.5 text-slate-600" />
+                <span>
+                  {language === "hi" ? "व्यवस्थापक पोर्टल (एडमिन)" :
+                   language === "gu" ? "એડમિન પોર્ટલ (મેનેજર)" :
+                   language === "fr" ? "Portail d'Administration" :
+                   language === "de" ? "Administrator-Portal" :
+                   language === "es" ? "Portal del Administrador" :
+                   "Administrator Portal"}
+                </span>
+              </a>
+            </div>
           </div>
 
           <div className="flex items-center justify-center gap-2 text-xs text-slate-700 text-center px-4">
