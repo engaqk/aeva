@@ -401,6 +401,43 @@ export default function AdminPanel() {
               </div>
 
               <div className="grid grid-cols-2 gap-3 text-[10px] text-slate-700 font-semibold">
+                {selectedUser.profile?.demographics && (
+                  <div className="bg-cream-50/50 p-3 rounded-2xl border border-cream-200/50 space-y-2.5 col-span-2 text-left">
+                    <span className="text-[8px] uppercase font-bold text-slate-700 tracking-wider block border-b border-cream-100 pb-1">
+                      Demographic Profile
+                    </span>
+                    <div className="flex items-center gap-3">
+                      {selectedUser.profile.demographics.photoHex ? (
+                        <img 
+                          src={selectedUser.profile.demographics.photoHex} 
+                          alt="User avatar" 
+                          className="w-10 h-10 rounded-full object-cover border border-cream-200 shadow-xs shrink-0"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-rose-50 text-rose-500 border border-rose-100 flex items-center justify-center font-bold text-[10px] shrink-0">
+                          {selectedUser.profile.demographics.name?.substring(0, 2).toUpperCase() || "US"}
+                        </div>
+                      )}
+                      <div className="space-y-0.5">
+                        <span className="text-xs font-extrabold text-slate-800">{selectedUser.profile.demographics.name}</span>
+                        <span className="text-[9px] text-slate-700 block">
+                          {selectedUser.profile.demographics.gender} • DOB: {selectedUser.profile.demographics.dob}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-[9px] text-slate-700 pt-1 border-t border-cream-100">
+                      <div>
+                        <span className="text-[8px] text-slate-700 uppercase block leading-none">Location</span>
+                        <span className="font-bold text-slate-800 block truncate mt-0.5">{selectedUser.profile.demographics.city}, {selectedUser.profile.demographics.country}</span>
+                      </div>
+                      <div>
+                        <span className="text-[8px] text-slate-700 uppercase block leading-none">Mobile</span>
+                        <span className="font-bold text-slate-800 block truncate mt-0.5">{selectedUser.profile.demographics.mobile}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="bg-cream-100/50 p-2.5 rounded-xl border border-cream-200/50">
                   <span className="text-[8px] text-slate-700 block uppercase">Target Mode</span>
                   <span className="text-xs text-slate-800 block font-bold capitalize mt-0.5">{selectedUser.profile?.mode?.replace("_", " ")}</span>
@@ -454,7 +491,23 @@ export default function AdminPanel() {
                 </p>
               </div>
 
-              <div className="pt-1 flex justify-end">
+              <div className="pt-1 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    localStorage.setItem("aeva_impersonate_uid", selectedUser.uid);
+                    localStorage.setItem("aeva_impersonate_email", selectedUser.email);
+                    if (selectedUser.profile) {
+                      localStorage.setItem(`aeva_profile_${selectedUser.uid}`, JSON.stringify(selectedUser.profile));
+                    }
+                    window.location.href = "/";
+                  }}
+                  className="px-3.5 py-2.5 bg-amber-50 hover:bg-amber-100 border border-amber-250 text-amber-600 rounded-2xl text-[10px] font-bold transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 transform"
+                >
+                  <UserCheck className="w-3.5 h-3.5" />
+                  <span>Impersonate User</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => {

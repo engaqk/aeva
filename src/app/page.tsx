@@ -98,6 +98,33 @@ export default function Home() {
 
   // Subscribe to authentication state
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const impUid = localStorage.getItem("aeva_impersonate_uid");
+      const impEmail = localStorage.getItem("aeva_impersonate_email");
+      if (impUid) {
+        setUser({ uid: impUid, email: impEmail });
+        setAuthChecking(false);
+        
+        const loadImpersonatedProfile = async () => {
+          setProfileLoading(true);
+          try {
+            const uProfile = await getProfile(impUid);
+            if (uProfile) {
+              setProfile(uProfile);
+            } else {
+              setProfile({ mode: "cycle_sync" });
+            }
+          } catch (err) {
+            console.error(err);
+          } finally {
+            setProfileLoading(false);
+          }
+        };
+        loadImpersonatedProfile();
+        return;
+      }
+    }
+
     // Fail-safe timeout: force bypass if Firebase Auth hangs
     const timeoutId = setTimeout(() => {
       setAuthChecking((checking) => {
@@ -185,6 +212,26 @@ export default function Home() {
 
   return (
     <div className="relative flex flex-col flex-1 h-full overflow-hidden bg-cream-50">
+      
+      {/* Impersonation Warning Banner */}
+      {typeof window !== "undefined" && localStorage.getItem("aeva_impersonate_uid") && (
+        <div className="w-full bg-amber-500 text-white px-4 py-2 flex items-center justify-between text-xs font-bold z-[100] shrink-0 shadow-md">
+          <div className="flex items-center gap-2">
+            <span className="animate-pulse">⚠️</span>
+            <span>Impersonation Session: {localStorage.getItem("aeva_impersonate_email")}</span>
+          </div>
+          <button
+            onClick={() => {
+              localStorage.removeItem("aeva_impersonate_uid");
+              localStorage.removeItem("aeva_impersonate_email");
+              window.location.href = "/admin";
+            }}
+            className="bg-white hover:bg-cream-100 text-amber-600 font-extrabold px-3 py-1.5 rounded-full uppercase tracking-wider text-[9px] cursor-pointer transition-colors shadow-xs"
+          >
+            Exit Impersonation
+          </button>
+        </div>
+      )}
       
       {/* Premium Persistent Top Header Bar */}
       <div className="w-full h-16 bg-white/90 backdrop-blur-md border-b border-cream-200/50 flex items-center justify-between px-5 shrink-0 z-50 animate-fade-in">

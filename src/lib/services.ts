@@ -49,6 +49,17 @@ export interface UserProfile {
   encryptedMedicalMetadata?: string;
   photoHex?: string;
   photoType?: string;
+  demographics?: {
+    name: string;
+    city: string;
+    country: string;
+    mobile: string;
+    gender: string;
+    dob: string;
+    photoHex?: string;
+    photoType?: string;
+  };
+  demographicsFilled?: boolean;
 }
 
 export interface DailyLogData {
@@ -199,6 +210,29 @@ export async function signOut() {
 
 // User Profile Operations
 export async function saveProfile(uid: string, profile: UserProfile, email?: string) {
+  const emailVal = email || `${uid.substring(0, 8)}@aeva.com`;
+  
+  // Sync to local admin users list
+  try {
+    const localUsersStr = localStorage.getItem("aeva_admin_users") || "[]";
+    const localUsers = JSON.parse(localUsersStr);
+    const existingIdx = localUsers.findIndex((u: any) => u.uid === uid);
+    const newRec = {
+      uid,
+      email: emailVal,
+      profile,
+      logCount: localUsers[existingIdx]?.logCount || 0
+    };
+    if (existingIdx >= 0) {
+      localUsers[existingIdx] = newRec;
+    } else {
+      localUsers.push(newRec);
+    }
+    localStorage.setItem("aeva_admin_users", JSON.stringify(localUsers));
+  } catch (e) {
+    console.warn("Failed to sync to local admin list:", e);
+  }
+
   if (isFirebaseConfigured && db) {
     try {
       const userDocRef = doc(db, "users", uid);

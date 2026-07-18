@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { signUp, signIn, signInWithGoogle, saveProfile, UserProfile } from "@/lib/services";
+import { signUp, signIn, signInWithGoogle, saveProfile, getProfile, UserProfile } from "@/lib/services";
 import { generateMasterKey, deriveKeyFromPassword, bufToHex } from "@/lib/crypto";
 import { isFirebaseConfigured } from "@/lib/firebase";
 import { Shield, Sparkles, Flower, Heart, Activity, Loader2, Lock, Check, X, ArrowLeft, ArrowRight, Users, Info } from "lucide-react";
@@ -286,6 +286,51 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
   const [periodLength, setPeriodLength] = useState(5);
   const [lastPeriodStart, setLastPeriodStart] = useState("");
 
+  // Demographics States
+  const [demoName, setDemoName] = useState("");
+  const [demoCity, setDemoCity] = useState("");
+  const [demoCountry, setDemoCountry] = useState("");
+  const [demoMobile, setDemoMobile] = useState("");
+  const [demoGender, setDemoGender] = useState("Female");
+  const [demoDob, setDemoDob] = useState("");
+  const [demoPhotoHex, setDemoPhotoHex] = useState("");
+  const [demoPhotoType, setDemoPhotoType] = useState("");
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert("Photo must be less than 2MB.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setDemoPhotoHex(reader.result as string);
+        setDemoPhotoType(file.type);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const checkUserRegistered = async (uid: string) => {
+    try {
+      const profile = await getProfile(uid);
+      if (profile && profile.demographicsFilled) {
+        return true;
+      }
+      const localProfileStr = localStorage.getItem(`aeva_profile_${uid}`);
+      if (localProfileStr) {
+        const localProfile = JSON.parse(localProfileStr);
+        if (localProfile.demographicsFilled) {
+          return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -295,20 +340,24 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
       if (isLogin) {
         // Sign In
         const user = await signIn(email, password);
-        // For existing users, check if a key exists. If not, they must enter their key in Privacy Vault.
-        // We'll proceed to the dashboard.
-        // Wait, if they set a passphrase, we can derive the key immediately from their password + email.
         const salt = bufToHex(new TextEncoder().encode(email + "_aevasalt"));
         const derived = await deriveKeyFromPassword(password, salt);
         localStorage.setItem(`aeva_master_key_${user.uid}`, derived);
         
-        onAuthSuccess(user.uid, user.email || email);
+        const registered = await checkUserRegistered(user.uid);
+        if (registered) {
+          onAuthSuccess(user.uid, user.email || email);
+        } else {
+          setUserId(user.uid);
+          setUserEmailAddress(user.email || email);
+          setStep(2); // Go to demographics setup
+        }
       } else {
-        // Sign Up
+        // Sign Up / Register
         const user = await signUp(email, password);
         setUserId(user.uid);
         setUserEmailAddress(user.email || email);
-        setStep(2); // Go to Mode Select
+        setStep(2); // Go to demographics setup
       }
     } catch (err: any) {
       setError(err.message || "Authentication failed. Please try again.");
@@ -344,11 +393,15 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
       if (!keyHex) {
         keyHex = await deriveKeyFromPassword(user.uid, salt);
         localStorage.setItem(`aeva_master_key_${user.uid}`, keyHex);
+      }
+
+      const registered = await checkUserRegistered(user.uid);
+      if (registered) {
+        onAuthSuccess(user.uid, user.email || "local_google_user@gmail.com");
+      } else {
         setUserId(user.uid);
         setUserEmailAddress(user.email || "local_google_user@gmail.com");
-        setStep(2);
-      } else {
-        onAuthSuccess(user.uid, user.email || "local_google_user@gmail.com");
+        setStep(2); // Go to demographics setup
       }
     } catch (err: any) {
       setError(err.message || "Encryption key initialization failed.");
@@ -359,13 +412,10 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
 
   const handleSelectMockGoogleEmail = async (selectedEmail: string) => {
     setShowMockGoogle(false);
-    // Generate stable UID based on the selected email
     const uid = "mock_google_uid_" + bufToHex(new TextEncoder().encode(selectedEmail)).substring(0, 12);
     const user = { uid, email: selectedEmail };
     
-    // Save locally
     localStorage.setItem("aeva_user", JSON.stringify(user));
-    
     await proceedGoogleAuthSuccess(user);
   };
 
@@ -380,11 +430,9 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
         const salt = bufToHex(new TextEncoder().encode(userEmailAddress + "_aevasalt"));
         keyHex = await deriveKeyFromPassword(passphrase, salt);
       } else {
-        // Auto-generate high-entropy key
         keyHex = await generateMasterKey();
       }
 
-      // Save Key Locally (Zero-Knowledge: Server never sees this)
       localStorage.setItem(`aeva_master_key_${userId}`, keyHex);
 
       // 2. Save User Profile to DB
@@ -393,10 +441,27 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
         cycleLength: mode === "cycle_sync" ? cycleLength : undefined,
         periodLength: mode === "cycle_sync" ? periodLength : undefined,
         lastPeriodStart: mode === "cycle_sync" ? lastPeriodStart : undefined,
-        encryptedMedicalMetadata: "" // To be filled with encrypted data later
+        encryptedMedicalMetadata: "",
+        photoHex: demoPhotoHex || undefined,
+        photoType: demoPhotoType || undefined,
+        demographics: {
+          name: demoName,
+          city: demoCity,
+          country: demoCountry,
+          mobile: demoMobile,
+          gender: demoGender,
+          dob: demoDob,
+          photoHex: demoPhotoHex || undefined,
+          photoType: demoPhotoType || undefined
+        },
+        demographicsFilled: true
       };
 
       await saveProfile(userId, profile, userEmailAddress);
+      
+      localStorage.setItem(`aeva_profile_${userId}`, JSON.stringify(profile));
+      localStorage.setItem(`aeva_demographics_${userId}`, JSON.stringify(profile.demographics));
+
       onAuthSuccess(userId, userEmailAddress);
     } catch (err: any) {
       setError(err.message || "Failed to finalize setup.");
@@ -668,17 +733,54 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
               </div>
             </div>
 
+            {/* Login / Register Tab Bar Selector */}
+            <div className="flex w-full gap-1.5 p-1.5 bg-cream-100/60 rounded-2xl border border-cream-200/50 mb-1">
+              <button
+                type="button"
+                onClick={() => setIsLogin(true)}
+                className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  isLogin
+                    ? "bg-white text-rose-500 shadow-xs border border-rose-100/50"
+                    : "text-slate-700 hover:text-slate-800"
+                }`}
+              >
+                {language === "hi" ? "लॉगिन करें" :
+                 language === "gu" ? "લોગિન કરો" :
+                 language === "fr" ? "Se Connecter" :
+                 language === "de" ? "Anmelden" :
+                 language === "es" ? "Iniciar Sesión" :
+                 "Sign In"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsLogin(false)}
+                className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  !isLogin
+                    ? "bg-white text-rose-500 shadow-xs border border-rose-100/50"
+                    : "text-slate-700 hover:text-slate-800"
+                }`}
+              >
+                {language === "hi" ? "रजिस्टर करें" :
+                 language === "gu" ? "રજીસ્ટર કરો" :
+                 language === "fr" ? "S'Inscrire" :
+                 language === "de" ? "Registrieren" :
+                 language === "es" ? "Registrarse" :
+                 "Register"}
+              </button>
+            </div>
+
             {error && (
               <div className="w-full p-3 bg-rose-50 border border-rose-200 text-xs text-rose-600 rounded-xl text-center">
                 {error}
               </div>
             )}
 
+            {/* Google Authentication (Gmail Direct) Option */}
             <button
               type="button"
               onClick={handleGoogleAuth}
               disabled={loading}
-              className="w-full py-4 bg-rose-400 hover:bg-rose-500 text-white rounded-2xl font-bold text-sm transition-all shadow-md flex items-center justify-center gap-3 disabled:bg-rose-300 transform active:scale-95"
+              className="w-full py-3.5 bg-rose-400 hover:bg-rose-500 text-white rounded-2xl font-bold text-sm transition-all shadow-md flex items-center justify-center gap-3 disabled:bg-rose-300 transform active:scale-95 cursor-pointer"
             >
               {loading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -687,61 +789,101 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
                   <path d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.186 4.114-3.51 0-6.386-2.876-6.386-6.386 0-3.51 2.876-6.386 6.386-6.386 1.63 0 3.117.616 4.254 1.621l3.053-3.052C19.066 2.338 15.89 1 12.24 1 5.92 1 1 5.92 1 12.24s4.92 11.24 11.24 11.24c5.8 0 10.597-4.147 10.597-11.24 0-.746-.08-1.465-.213-2.155H12.24z" />
                 </svg>
               )}
-              <span>Gmail Direct Login</span>
+              <span>
+                {isLogin
+                  ? (language === "hi" ? "जीमेल से लॉगिन करें" :
+                     language === "gu" ? "જીમેલ સાથે લોગિન કરો" :
+                     language === "fr" ? "Connexion Gmail Directe" :
+                     language === "de" ? "Gmail-Direktanmeldung" :
+                     language === "es" ? "Acceso Directo Gmail" :
+                     "Gmail Direct Login")
+                  : (language === "hi" ? "जीमेल से रजिस्टर करें" :
+                     language === "gu" ? "જીમેલ સાથે રજીસ્ટર કરો" :
+                     language === "fr" ? "Inscription Gmail Directe" :
+                     language === "de" ? "Gmail-Direktregistrierung" :
+                     language === "es" ? "Registro Directo Gmail" :
+                     "Gmail Direct Registration")
+                }
+              </span>
             </button>
 
-            {/* Traditional Credentials Login Option */}
-            {!useCredentialsLogin ? (
+            {/* Separator */}
+            <div className="w-full flex items-center justify-center gap-2 py-1 text-slate-700 text-[10px] font-bold uppercase tracking-wider">
+              <span className="h-[1px] bg-cream-200 flex-1"></span>
+              <span>
+                {language === "hi" ? "या क्रेडेंशियल" :
+                 language === "gu" ? "અથવા ઓળખપત્રો" :
+                 language === "fr" ? "ou identifiants" :
+                 language === "de" ? "oder Anmeldedaten" :
+                 language === "es" ? "o credenciales" :
+                 "or credentials"}
+              </span>
+              <span className="h-[1px] bg-cream-200 flex-1"></span>
+            </div>
+
+            {/* Traditional Credentials Form */}
+            <form onSubmit={handleAuth} className="w-full space-y-3.5 text-left">
+              <div className="space-y-1">
+                <label className="text-[9px] uppercase tracking-wider font-bold text-slate-700">
+                  {language === "hi" ? "उपयोगकर्ता नाम या ईमेल" :
+                   language === "gu" ? "વપરાશકર્તા નામ અથવા ઇમેઇલ" :
+                   language === "fr" ? "Identifiant ou E-mail" :
+                   language === "de" ? "Benutzername oder E-Mail" :
+                   language === "es" ? "Usuario o E-mail" :
+                   "Username / Email"}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="e.g. user@aeva.com"
+                  className="w-full px-3.5 py-3 bg-cream-100/50 border border-cream-200 rounded-2xl text-xs focus:border-rose-300 focus:outline-none text-slate-800"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[9px] uppercase tracking-wider font-bold text-slate-700">
+                  {language === "hi" ? "पासवर्ड" :
+                   language === "gu" ? "પાસવર્ડ" :
+                   language === "fr" ? "Mot de passe" :
+                   language === "de" ? "Passwort" :
+                   language === "es" ? "Contraseña" :
+                   "Password"}
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-3.5 py-3 bg-cream-100/50 border border-cream-200 rounded-2xl text-xs focus:border-rose-300 focus:outline-none text-slate-800"
+                />
+              </div>
+              
               <button
-                type="button"
-                onClick={() => setUseCredentialsLogin(true)}
-                className="text-xs text-slate-700 hover:text-slate-800 transition-colors flex items-center justify-center gap-1.5 cursor-pointer mt-1 font-semibold active:scale-95 transform"
+                type="submit"
+                disabled={loading}
+                className="w-full py-3.5 bg-slate-750 hover:bg-slate-800 text-white text-xs font-bold rounded-2xl transition-all cursor-pointer active:scale-95 transform shadow-sm flex items-center justify-center gap-1.5 disabled:bg-slate-500"
               >
-                <Lock className="w-3.5 h-3.5 text-slate-600" />
-                <span>Sign in with Username/Password</span>
+                {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>
+                  {isLogin
+                    ? (language === "hi" ? "सत्यापित करें और लॉगिन करें" :
+                       language === "gu" ? "ચકાસો અને લોગિન કરો" :
+                       language === "fr" ? "Vérifier & Entrer" :
+                       language === "de" ? "Bestätigen & Beitreten" :
+                       language === "es" ? "Verificar e Ingresar" :
+                       "Verify & Sign In")
+                    : (language === "hi" ? "रजिस्टर करें और जारी रखें" :
+                       language === "gu" ? "રજીસ્ટર કરો અને ચાલુ રાખો" :
+                       language === "fr" ? "S'inscrire & Continuer" :
+                       language === "de" ? "Registrieren & Weiter" :
+                       language === "es" ? "Registrarse y Continuar" :
+                       "Register & Continue")
+                  }
+                </span>
               </button>
-            ) : (
-              <form onSubmit={handleAuth} className="w-full space-y-3 pt-3.5 border-t border-cream-200/50">
-                <div className="space-y-1 text-left">
-                  <label className="text-[9px] uppercase tracking-wider font-bold text-slate-700">Username / Email</label>
-                  <input
-                    type="text"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="e.g. admin"
-                    className="w-full px-3 py-2.5 bg-cream-100/50 border border-cream-200 rounded-xl text-xs focus:border-rose-300 focus:outline-none text-slate-800"
-                  />
-                </div>
-                <div className="space-y-1 text-left">
-                  <label className="text-[9px] uppercase tracking-wider font-bold text-slate-700">Password</label>
-                  <input
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full px-3 py-2.5 bg-cream-100/50 border border-cream-200 rounded-xl text-xs focus:border-rose-300 focus:outline-none text-slate-800"
-                  />
-                </div>
-                
-                <div className="flex gap-2 pt-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setUseCredentialsLogin(false)}
-                    className="flex-1 py-2.5 bg-cream-200 hover:bg-cream-300 text-slate-800 text-xs font-bold rounded-2xl transition-all cursor-pointer active:scale-95 transform"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 py-2.5 bg-rose-400 hover:bg-rose-500 text-white text-xs font-bold rounded-2xl transition-all cursor-pointer active:scale-95 transform shadow-sm"
-                  >
-                    Verify & Sign In
-                  </button>
-                </div>
-              </form>
-            )}
+            </form>
 
             <div className="flex flex-col gap-2.5 mt-2 items-center w-full">
               <button
@@ -843,6 +985,141 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
       )}
 
       {step === 2 && (
+        <div className="space-y-6 text-left animate-fade-in">
+          <div className="text-center space-y-2">
+            <h2 className="font-serif text-3xl text-slate-800 font-semibold">
+              {language === "hi" ? "व्यक्तिगत विवरण" :
+               language === "gu" ? "વ્યક્તિગત વિગતો" :
+               language === "fr" ? "Profil Personnel" :
+               language === "de" ? "Persönliche Daten" :
+               language === "es" ? "Perfil Personal" :
+               "Personal Details"}
+            </h2>
+            <p className="text-xs text-slate-700">
+              {language === "hi" ? "Aeva AI को आपके चक्र पूर्वानुमानों को निजीकृत करने में मदद करें।" :
+               language === "gu" ? "Aeva AI ને તમારા ચક્ર પૂર્વાનુમાન કસ્ટમાઇઝ કરવામાં મદદ કરો." :
+               language === "fr" ? "Aidez l'IA d'Aeva à personnaliser vos prévisions de cycle." :
+               language === "de" ? "Helfen Sie Aeva KI, Ihre Zyklusprognosen zu personalisieren." :
+               language === "es" ? "Ayuda a la IA de Aeva a personalizar tus pronósticos." :
+               "Help Aeva AI personalize your cycle predictions and clinical screening."}
+            </p>
+          </div>
+
+          <div className="bg-white/80 backdrop-blur-md p-6 rounded-[32px] border border-rose-100 shadow-sm space-y-4">
+            
+            {/* Profile Avatar Upload */}
+            <div className="flex flex-col items-center space-y-2 pb-2 border-b border-cream-100">
+              <div className="relative w-18 h-18 rounded-full overflow-hidden border-2 border-rose-200 bg-cream-100 flex items-center justify-center shadow-inner">
+                {demoPhotoHex ? (
+                  <img src={demoPhotoHex} alt="Avatar Preview" className="w-full h-full object-cover" />
+                ) : (
+                  <Flower className="w-8 h-8 text-rose-400 animate-pulse" />
+                )}
+              </div>
+              <label className="text-[10px] uppercase font-bold tracking-wider text-rose-500 hover:text-rose-600 cursor-pointer">
+                {language === "hi" ? "फ़ोटो चुनें" :
+                 language === "gu" ? "ફોટો પસંદ કરો" :
+                 language === "fr" ? "Choisir une photo" :
+                 language === "de" ? "Foto auswählen" :
+                 language === "es" ? "Elegir foto" :
+                 "Select Profile Photo"}
+                <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
+              </label>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3.5">
+              <div className="space-y-1 col-span-2">
+                <label className="text-[9px] uppercase tracking-wider font-bold text-slate-700">Name</label>
+                <input
+                  type="text"
+                  required
+                  value={demoName}
+                  onChange={(e) => setDemoName(e.target.value)}
+                  placeholder="e.g. Sarah"
+                  className="w-full px-3.5 py-3 bg-cream-100/50 border border-cream-200 rounded-2xl text-xs focus:border-rose-300 focus:outline-none text-slate-800"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[9px] uppercase tracking-wider font-bold text-slate-700">City</label>
+                <input
+                  type="text"
+                  required
+                  value={demoCity}
+                  onChange={(e) => setDemoCity(e.target.value)}
+                  placeholder="e.g. Mumbai"
+                  className="w-full px-3.5 py-3 bg-cream-100/50 border border-cream-200 rounded-2xl text-xs focus:border-rose-300 focus:outline-none text-slate-800"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[9px] uppercase tracking-wider font-bold text-slate-700">Country</label>
+                <input
+                  type="text"
+                  required
+                  value={demoCountry}
+                  onChange={(e) => setDemoCountry(e.target.value)}
+                  placeholder="e.g. India"
+                  className="w-full px-3.5 py-3 bg-cream-100/50 border border-cream-200 rounded-2xl text-xs focus:border-rose-300 focus:outline-none text-slate-800"
+                />
+              </div>
+
+              <div className="space-y-1 col-span-2">
+                <label className="text-[9px] uppercase tracking-wider font-bold text-slate-700">Mobile Number</label>
+                <input
+                  type="tel"
+                  required
+                  value={demoMobile}
+                  onChange={(e) => setDemoMobile(e.target.value)}
+                  placeholder="+91 98765 43210"
+                  className="w-full px-3.5 py-3 bg-cream-100/50 border border-cream-200 rounded-2xl text-xs focus:border-rose-300 focus:outline-none text-slate-800"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[9px] uppercase tracking-wider font-bold text-slate-700">Gender</label>
+                <select
+                  value={demoGender}
+                  onChange={(e) => setDemoGender(e.target.value)}
+                  className="w-full px-3.5 py-3 bg-cream-100/50 border border-cream-200 rounded-2xl text-xs focus:border-rose-300 focus:outline-none text-slate-800 cursor-pointer"
+                >
+                  <option value="Female">Female</option>
+                  <option value="Male">Male</option>
+                  <option value="Non-Binary">Non-Binary</option>
+                  <option value="Prefer not to say">Prefer not to say</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[9px] uppercase tracking-wider font-bold text-slate-700">Date of Birth</label>
+                <input
+                  type="date"
+                  required
+                  value={demoDob}
+                  onChange={(e) => setDemoDob(e.target.value)}
+                  className="w-full px-3.5 py-3 bg-cream-100/50 border border-cream-200 rounded-2xl text-xs focus:border-rose-300 focus:outline-none text-slate-800"
+                />
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            disabled={!demoName || !demoCity || !demoCountry || !demoMobile || !demoDob}
+            onClick={() => setStep(3)}
+            className="w-full py-3.5 bg-rose-400 hover:bg-rose-500 disabled:bg-slate-350 text-white rounded-2xl font-bold text-sm transition-colors shadow-md cursor-pointer text-center"
+          >
+            {language === "hi" ? "जारी रखें" :
+             language === "gu" ? "ચાલુ રાખો" :
+             language === "fr" ? "Continuer" :
+             language === "de" ? "Weiter" :
+             language === "es" ? "Continuar" :
+             "Continue to Health Vault Settings"}
+          </button>
+        </div>
+      )}
+
+      {step === 3 && (
         <div className="space-y-6">
           <div className="text-center space-y-2">
             <h2 className="font-serif text-3xl text-slate-800 font-semibold">Select Mode</h2>
@@ -867,14 +1144,15 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
               },
               {
                 id: "hormonal_screening",
-                title: "Hormonal screening / Support",
-                desc: "Evaluate risks for PCOS, Endometriosis, and Thyroid disparities with structured triage.",
+                title: "Hormonal screening / Triage",
+                desc: "Clinical-grade AI triage checking PCOS, Thyroid, and Endometriosis risk.",
                 icon: Sparkles,
-                color: "bg-amber-100 text-amber-600"
+                color: "bg-amber-100 text-amber-500"
               }
             ].map((m) => (
               <button
                 key={m.id}
+                type="button"
                 onClick={() => setMode(m.id as any)}
                 className={`w-full text-left p-4 rounded-3xl border transition-all flex items-start gap-4 ${
                   mode === m.id
@@ -894,19 +1172,19 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
           </div>
 
           <button
-            onClick={() => setStep(mode === "cycle_sync" ? 3 : 4)}
-            className="w-full py-3.5 bg-rose-400 hover:bg-rose-500 text-white rounded-2xl font-semibold text-sm transition-colors"
+            onClick={() => setStep(mode === "cycle_sync" ? 4 : 5)}
+            className="w-full py-3.5 bg-rose-400 hover:bg-rose-500 text-white rounded-2xl font-semibold text-sm transition-colors cursor-pointer"
           >
             Continue
           </button>
         </div>
       )}
 
-      {step === 3 && (
+      {step === 4 && (
         <div className="space-y-6">
           <div className="text-center space-y-2">
             <h2 className="font-serif text-3xl text-slate-800 font-semibold">Cycle Metrics</h2>
-            <p className="text-sm text-slate-700">Help Aeva calculate your current cycle position.</p>
+            <p className="text-sm text-slate-700 font-bold">Help Aeva calculate your current cycle position.</p>
           </div>
 
           <div className="bg-white/80 p-6 rounded-3xl border border-rose-100 space-y-4">
@@ -965,8 +1243,8 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
 
           <div className="flex gap-3">
             <button
-              onClick={() => setStep(2)}
-              className="flex-1 py-3.5 bg-cream-200 hover:bg-cream-300 text-slate-800 rounded-2xl font-semibold text-sm transition-colors"
+              onClick={() => setStep(3)}
+              className="flex-1 py-3.5 bg-cream-200 hover:bg-cream-300 text-slate-800 rounded-2xl font-semibold text-sm transition-colors cursor-pointer"
             >
               Back
             </button>
@@ -977,9 +1255,9 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
                   return;
                 }
                 setError("");
-                setStep(4);
+                setStep(5);
               }}
-              className="flex-1 py-3.5 bg-rose-400 hover:bg-rose-500 text-white rounded-2xl font-semibold text-sm transition-colors"
+              className="flex-1 py-3.5 bg-rose-400 hover:bg-rose-500 text-white rounded-2xl font-semibold text-sm transition-colors cursor-pointer"
             >
               Continue
             </button>
@@ -988,7 +1266,7 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
         </div>
       )}
 
-      {step === 4 && (
+      {step === 5 && (
         <div className="space-y-6">
           <div className="text-center space-y-2">
             <div className="inline-flex p-3 bg-sage-100 rounded-full text-sage-600 mb-2">
@@ -1038,15 +1316,15 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
 
           <div className="flex gap-3">
             <button
-              onClick={() => setStep(mode === "cycle_sync" ? 3 : 2)}
-              className="flex-1 py-3.5 bg-cream-200 hover:bg-cream-300 text-slate-800 rounded-2xl font-semibold text-sm transition-colors"
+              onClick={() => setStep(mode === "cycle_sync" ? 4 : 3)}
+              className="flex-1 py-3.5 bg-cream-200 hover:bg-cream-300 text-slate-800 rounded-2xl font-semibold text-sm transition-colors cursor-pointer"
             >
               Back
             </button>
             <button
               onClick={handleOnboardingSubmit}
               disabled={loading || (usePassphrase && passphrase.length < 8)}
-              className="flex-1 py-3.5 bg-rose-400 hover:bg-rose-500 text-white rounded-2xl font-semibold text-sm transition-colors shadow-sm disabled:bg-slate-300"
+              className="flex-1 py-3.5 bg-rose-400 hover:bg-rose-500 text-white rounded-2xl font-semibold text-sm transition-colors shadow-sm disabled:bg-slate-300 cursor-pointer"
             >
               {loading ? "Generating Vault..." : "Initialize Vault"}
             </button>
