@@ -1352,6 +1352,74 @@ export default function Dashboard({ uid, profile, onProfileUpdate, onNavigate, l
         </div>
       </div>
 
+      {/* Weekly Engagement Tracker (At least 5 times a week) */}
+      <div className="bg-white p-4.5 rounded-[28px] border border-rose-100/50 shadow-sm space-y-3 text-left">
+        <div className="flex justify-between items-start">
+          <div className="flex items-start gap-2.5">
+            <div className={`p-2 rounded-xl shrink-0 ${recentLogsCount >= 5 ? "bg-sage-50 text-sage-600" : "bg-amber-50 text-amber-500 animate-pulse"}`}>
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-serif font-bold text-sm text-slate-800">
+                {language === "hi" ? "साप्ताहिक जुड़ाव लक्ष्य" :
+                 language === "gu" ? "સાપ્તાહિક જોડાણ લક્ષ્ય" :
+                 language === "fr" ? "Objectif d'Engagement Hebdomadaire" :
+                 language === "de" ? "Wöchentliches Engagement-Ziel" :
+                 language === "es" ? "Meta de Compromiso Semanal" :
+                 "Weekly Engagement Goal"}
+              </h3>
+              <p className="text-[10px] text-slate-700 leading-normal">
+                {language === "hi" ? "हार्मोनल पूर्वानुमान सटीकता बनाए रखने के लिए सप्ताह में कम से कम 5 दिन लॉग करें" :
+                 language === "gu" ? "હોર્મોનલ ચોકસાઈ જાળવવા માટે અઠવાડિયામાં ઓછામાં ઓછા ૫ દિવસ લોગ કરો" :
+                 language === "fr" ? "Enregistrez au moins 5 fois par semaine pour optimiser les prévisions" :
+                 language === "de" ? "Mindestens 5 Logs pro Woche für präzise KI-Vorhersagen erforderlich" :
+                 language === "es" ? "Registre al menos 5 días por semana para predicciones precisas" :
+                 "Log symptoms at least 5 days a week for medical-grade AI precision"}
+              </p>
+            </div>
+          </div>
+          <span className={`text-[10px] font-extrabold px-3 py-1 rounded-full border ${
+            recentLogsCount >= 5 
+              ? "bg-sage-50 border-sage-100 text-sage-600" 
+              : "bg-amber-50 border-amber-100 text-amber-600"
+          }`}>
+            {recentLogsCount} / 5 {language === "hi" ? "लॉग" : language === "gu" ? "લોગ" : language === "fr" ? "Journaux" : language === "de" ? "Logs" : language === "es" ? "Registros" : "logs"}
+          </span>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="space-y-1">
+          <div className="w-full bg-cream-100 rounded-full h-2 overflow-hidden border border-cream-200/50">
+            <div 
+              className={`h-full transition-all duration-500 rounded-full ${
+                recentLogsCount >= 5 ? "bg-sage-400" : "bg-rose-350"
+              }`}
+              style={{ width: `${Math.min(100, (recentLogsCount / 5) * 100)}%` }}
+            />
+          </div>
+          <div className="flex justify-between text-[9px] font-bold text-slate-705">
+            <span>0</span>
+            <span>
+              {recentLogsCount >= 5 
+                ? (language === "hi" ? "सटीकता अनलॉक!" :
+                   language === "gu" ? "ચોકસાઈ અનલોક!" :
+                   language === "fr" ? "Sincro Optimisée !" :
+                   language === "de" ? "Präzision Freigeschaltet!" :
+                   language === "es" ? "¡Precisión Desbloqueada!" :
+                   "Precision Unlocked! 🌟")
+                : (language === "hi" ? `सटीकता के लिए ${5 - recentLogsCount} अधिक लॉग की आवश्यकता है` :
+                   language === "gu" ? `ચોકસાઈ માટે વધુ ${5 - recentLogsCount} લોગની જરૂર છે` :
+                   language === "fr" ? `Plus que ${5 - recentLogsCount} journaux pour la précision` :
+                   language === "de" ? `Noch ${5 - recentLogsCount} Logs für volle Präzision` :
+                   language === "es" ? `Faltan ${5 - recentLogsCount} registros para precisión` :
+                   `${5 - recentLogsCount} more logs needed for target precision`)}
+            </span>
+            <span>5</span>
+          </div>
+        </div>
+      </div>
+
+
       {/* Mode Switcher Pill */}
       <div className="flex bg-cream-200/70 p-1 rounded-2xl border border-cream-300/40">
         {[

@@ -218,12 +218,12 @@ export default function Home() {
           <div className="flex items-center gap-2 text-left">
             <span>📲</span>
             <span className="font-semibold text-[10px]">
-              {language === "hi" ? "ऑफलाइन पहुंच के लिए ऐवा ऐप इंस्टॉल करें" :
-               language === "gu" ? "ઓફલાઇન એક્સેસ માટે એવા એપ ઇન્સ્ટોલ કરો" :
-               language === "fr" ? "Installez l'application Aeva pour l'accès hors ligne" :
-               language === "de" ? "Aeva-App für Offline-Zugriff installieren" :
-               language === "es" ? "Instale Aeva para acceder sin conexión" :
-               "Install Aeva App for offline access"}
+              {language === "hi" ? "ऐवा: एक टैप में अपना चक्र ट्रैक करें और गोपनीयता सुरक्षित रखें।" :
+               language === "gu" ? "એવા: એક ટેપમાં તમારું ચક્ર ટ્રૅક કરો અને પ્રાઇવસી લૉક કરો." :
+               language === "fr" ? "Aeva : Suivez votre cycle, verrouillez votre vie privée en un clic." :
+               language === "de" ? "Aeva: Zyklus verfolgen, Privatsphäre schützen mit einem Klick." :
+               language === "es" ? "Aeva: Sigue tu ciclo, bloquea tu privacidad con un toque." :
+               "Aeva: Track your cycle, lock your privacy in one tap."}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -255,6 +255,7 @@ export default function Home() {
             onAuthSuccess={handleAuthSuccess} 
             initialUserId={user?.uid} 
             initialUserEmail={user?.email || undefined} 
+            language={language}
           />
         ) : (profileLoading || !profile) ? (
           <div className="flex flex-col items-center justify-center flex-1 space-y-3 bg-cream-50">

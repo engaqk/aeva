@@ -6,73 +6,231 @@ import { generateMasterKey, deriveKeyFromPassword, bufToHex } from "@/lib/crypto
 import { isFirebaseConfigured } from "@/lib/firebase";
 import { Shield, Sparkles, Flower, Heart, Activity, Loader2, Lock, Check, X, ArrowLeft, ArrowRight, Users, Info } from "lucide-react";
 
-const INTRO_SLIDES = [
-  {
-    title: "Zero-Knowledge Encryption",
-    tagline: "Your intimate data remains 100% yours.",
-    description: "Unlike normal trackers, Aeva uses client-side AES-GCM 256-bit encryption. Your cycle logs, symptoms, and clinical results are encrypted in your browser before ever hitting the database. No leaks, no ads, no subpoenas.",
-    badge: "Incognito by Design",
-    color: "bg-sage-100 text-sage-600 border-sage-200",
-    icon: Shield,
-    image: "/privacy_vault.png",
-    features: [
-      "No central database can decrypt your file",
-      "No trackable cookies or marketing pixels",
-      "GDPR & HIPAA structurally compliant"
-    ]
-  },
-  {
-    title: "Biological Phase Syncing",
-    tagline: "Stop fighting your cycle. Sync with it.",
-    description: "Your estrogen and progesterone levels shift dramatically throughout the month. Aeva's AI guides you when to focus on strength training, when to rest, what to eat, and when your creative focus will peak.",
-    badge: "Hormonal Harmony",
-    color: "bg-rose-100 text-rose-500 border-rose-200",
-    icon: Activity,
-    image: "/phase_syncing.png",
-    features: [
-      "Daily phase-synced training buffers",
-      "Nutrition & craving control guides",
-      "Hormone-aligned energy forecasting"
-    ]
-  },
-  {
-    title: "Clinical Risk Screening",
-    tagline: "Early warning triage at your fingertips.",
-    description: "Evaluate risk indicators for PCOS, Endometriosis, and thyroid imbalances anonymously. Aeva compiles raw symptoms into a certified, encrypted clinical brief that you can print or PDF-share with your OBGYN.",
-    badge: "Medical-Grade Alignment",
-    color: "bg-amber-100 text-amber-600 border-amber-200",
-    icon: Sparkles,
-    image: "/clinical_triage.png",
-    features: [
-      "Validated clinical screening checklists",
-      "One-click doctor-ready PDF reports",
-      "Completely anonymous self-assessments"
-    ]
-  },
-  {
-    title: "Incognito Peer Circles",
-    tagline: "Real community support, zero exposure.",
-    description: "Struggling with menopause flashes or hormonal changes? Connect with women in your exact phase. Post anonymously, share remedies, and exchange support without revealing your name or email.",
-    badge: "Safe Space",
-    color: "bg-purple-100 text-purple-600 border-purple-200",
-    icon: Users,
-    image: "/peer_circle.png",
-    features: [
-      "Phase-restricted peer feed access",
-      "Empathetic 'Hugs' & support reactions",
-      "No profile lookup or search indexing"
-    ]
-  }
-];
+function getIntroSlides(lang: string) {
+  const isHi = lang === "hi";
+  const isGu = lang === "gu";
+  const isFr = lang === "fr";
+  const isDe = lang === "de";
+  const isEs = lang === "es";
+
+  return [
+    {
+      title: isHi ? "शून्य-ज्ञान एन्क्रिप्शन" :
+             isGu ? "શૂન્ય-જ્ઞાન એન્ક્રિપ્શન" :
+             isFr ? "Chiffrement Zero-Knowledge" :
+             isDe ? "Zero-Knowledge-Verschlüsselung" :
+             isEs ? "Cifrado Zero-Knowledge" :
+             "Zero-Knowledge Encryption",
+      tagline: isHi ? "आपका व्यक्तिगत डेटा 100% आपका ही रहता है।" :
+               isGu ? "તમારી અંગત માહિતી ૧૦૦% તમારી જ રહેશે." :
+               isFr ? "Vos données intimes restent 100% les vôtres." :
+               isDe ? "Ihre intimsten Daten bleiben zu 100% Ihre." :
+               isEs ? "Tus datos íntimos siguen siendo 100% tuyos." :
+               "Your intimate data remains 100% yours.",
+      description: isHi ? "सामान्य ट्रैकर्स के विपरीत, ऐवा क्लाइंट-साइड एईएस-जीसीएम 256-बिट एन्क्रिप्शन का उपयोग करता है। आपके चक्र लॉग, लक्षण और क्लिनिकल परिणाम डेटाबेस में जाने से पहले आपके ब्राउज़र में एन्क्रिप्ट हो जाते हैं। कोई लीक नहीं, कोई विज्ञापन नहीं।" :
+                   isGu ? "સામાન્ય ટ્રેકર્સથી વિપરીત, એવા ક્લાયન્ટ-સાઇડ AES-GCM 256-bit એન્ક્રિપ્શનનો ઉપયોગ કરે છે. તમારા ચક્ર લોગ, લક્ષણો અને ક્લિનિકલ પરિણામો ડેટાબેઝમાં મોકલતા પહેલા તમારા બ્રાઉઝરમાં જ એન્ક્રિપ્ટ થાય છે." :
+                   isFr ? "Contrairement aux trackers normaux, Aeva utilise un chiffrement AES-GCM 256 bits côté client. Vos journaux de cycle, symptômes et résultats cliniques sont cryptés dans votre navigateur avant d'atteindre la base de données." :
+                   isDe ? "Im Gegensatz zu normalen Trackern verwendet Aeva clientseitige 256-Bit-AES-GCM-Verschlüsselung. Ihre Protokolle, Symptome und klinischen Ergebnisse werden im Browser verschlüsselt." :
+                   isEs ? "A diferencia de los rastreadores normales, Aeva utiliza cifrado AES-GCM de 256 bits en el lado del cliente. Tus registros de ciclo, síntomas y resultados clínicos se encriptan en tu navegador." :
+                   "Unlike normal trackers, Aeva uses client-side AES-GCM 256-bit encryption. Your cycle logs, symptoms, and clinical results are encrypted in your browser before ever hitting the database. No leaks, no ads, no subpoenas.",
+      badge: isHi ? "डिजाइन द्वारा गुप्त" :
+             isGu ? "ડિઝાઇન દ્વારા અજ્ઞાત" :
+             isFr ? "Incognito par Conception" :
+             isDe ? "Standardmäßig Inkognito" :
+             isEs ? "Incógnito por Diseño" :
+             "Incognito by Design",
+      color: "bg-sage-100 text-sage-600 border-sage-200",
+      icon: Shield,
+      image: "/privacy_vault.png",
+      features: [
+        isHi ? "कोई भी केंद्रीय डेटाबेस आपकी फ़ाइल को डिक्रिप्ट नहीं कर सकता" :
+        isGu ? "કોઈપણ સેન્ટ્રલ ડેટાબેઝ તમારી ફાઇલને ડિક્રિપ્ટ કરી શકશે નહીં" :
+        isFr ? "Aucune base de données ne peut décrypter votre fichier" :
+        isDe ? "Keine Datenbank kann Ihre Datei entschlüsseln" :
+        isEs ? "Ninguna base de datos puede descifrar tu archivo" :
+        "No central database can decrypt your file",
+
+        isHi ? "कोई ट्रैक करने योग्य कुकीज़ या विज्ञापन पिक्सेल नहीं" :
+        isGu ? "ટ્રૅક કરી શકાય તેવી કૂકીઝ કે માર્કેટિંગ પિક્સેલ્સ નથી" :
+        isFr ? "Pas de cookies traçables ni de pixels marketing" :
+        isDe ? "Keine trackbaren Cookies oder Marketing-Pixel" :
+        isEs ? "Sin cookies de rastreo ni píxeles publicitarios" :
+        "No trackable cookies or marketing pixels",
+
+        isHi ? "जीडीपीआर और हिप्पा संरचनात्मक रूप से अनुपालन" :
+        isGu ? "GDPR અને HIPAA સુસંગત" :
+        isFr ? "Conforme au RGPD et à la HIPAA" :
+        isDe ? "Strukturell konform mit DSGVO & HIPAA" :
+        isEs ? "Estructuralmente conforme con GDPR y HIPAA" :
+        "GDPR & HIPAA structurally compliant"
+      ]
+    },
+    {
+      title: isHi ? "जैविक चरण सिंकिंग" :
+             isGu ? "જૈવિક તબક્કાવાર સિંક" :
+             isFr ? "Biological Phase Syncing" :
+             isDe ? "Biologische Phasensynchronisierung" :
+             isEs ? "Sincronización de Fase Biológica" :
+             "Biological Phase Syncing",
+      tagline: isHi ? "अपने चक्र से लड़ना बंद करें। इसके साथ सिंक करें।" :
+               isGu ? "તમારા માસિક ચક્ર સાથે લડવાનું બંધ કરો. તેની સાથે સિંક કરો." :
+               isFr ? "Arrêtez de lutter contre votre cycle. Synchronisez-vous." :
+               isDe ? "Arbeiten Sie mit Ihrem Zyklus, nicht gegen ihn." :
+               isEs ? "Trabaja con tu ciclo, no contra él." :
+               "Stop fighting your cycle. Sync with it.",
+      description: isHi ? "पूरे महीने में आपके एस्ट्रोजन और प्रोजेस्टेरोन के स्तर में भारी बदलाव होता है। ऐवा का एआई आपका मार्गदर्शन करता है कि कब शक्ति प्रशिक्षण पर ध्यान देना है, कब आराम करना है, क्या खाना है और कब आपका ध्यान चरम पर होगा।" :
+                   isGu ? "આખા મહિના દરમિયાન તમારા એસ્ટ્રોજન અને પ્રોજેસ્ટેરોનનું સ્તર બદલાતું રહે છે. Aeva નું AI તમને માર્ગદર્શન આપે છે કે ક્યારે કસરત કરવી, ક્યારે આરામ કરવો, શું ખાવું અને ક્યારે તમારું ધ્યાન કેન્દ્રિત થશે." :
+                   isFr ? "Vos taux d'œstrogène et de progestérone fluctuent considérablement. L'IA d'Aeva vous guide pour le sport, la nutrition et la productivité créative." :
+                   isDe ? "Aevas KI leitet Sie bei Training, Ernährung und Produktivität an." :
+                   isEs ? "La IA de Aeva te guía en deporte, nutrición y enfoque productivo." :
+                   "Your estrogen and progesterone levels shift dramatically throughout the month. Aeva's AI guides you when to focus on strength training, when to rest, what to eat, and when your creative focus will peak.",
+      badge: isHi ? "हॉर्मोनल सद्भाव" :
+             isGu ? "હાર્મોનલ સંતુલન" :
+             isFr ? "Harmonie Hormonale" :
+             isDe ? "Hormonelle Harmonie" :
+             isEs ? "Armonía Hormonal" :
+             "Hormonal Harmony",
+      color: "bg-rose-100 text-rose-500 border-rose-200",
+      icon: Activity,
+      image: "/phase_syncing.png",
+      features: [
+        isHi ? "दैनिक चरण-सिंक प्रशिक्षण बफ़र्स" :
+        isGu ? "દૈનિક ચક્ર-સિંક ટ્રેનિંગ બફર્સ" :
+        isFr ? "Paliers d'entraînement synchronisés par phase" :
+        isDe ? "Phasensynchronisiertes Training" :
+        isEs ? "Entrenamientos adaptados por fase" :
+        "Daily phase-synced training buffers",
+
+        isHi ? "पोषण और लालसा नियंत्रण गाइड" :
+        isGu ? "પોષણ અને ક્રેવિંગ નિયંત્રણ માર્ગદર્શિકાઓ" :
+        isFr ? "Guides de nutrition et de contrôle des envies" :
+        isDe ? "Ernährungs- und Heißhunger-Guides" :
+        isEs ? "Guías de nutrición y antojos" :
+        "Nutrition & craving control guides",
+
+        isHi ? "हॉर्मोन-संरेखित ऊर्जा पूर्वानुमान" :
+        isGu ? "હાર્મોન-સંરેખિત ઊર્જા આગાહી" :
+        isFr ? "Prévision d'énergie alignée sur les hormones" :
+        isDe ? "Hormonelle Energieprognosen" :
+        isEs ? "Pronósticos de energía hormonal" :
+        "Hormone-aligned energy forecasting"
+      ]
+    },
+    {
+      title: isHi ? "क्लिनिकल जोखिम स्क्रीनिंग" :
+             isGu ? "ક્લિનિકલ જોખમ સ્ક્રિનિંગ" :
+             isFr ? "Dépistage Clinique des Risques" :
+             isDe ? "Klinisches Risiko-Screening" :
+             isEs ? "Detección de Riesgos Clínicos" :
+             "Clinical Risk Screening",
+      tagline: isHi ? "आपकी उंगलियों पर प्रारंभिक चेतावनी ट्राइएज।" :
+               isGu ? "તમારી આંગળીના ટેરવે પ્રારંભિક ચેતવણી ટ્રાયેજ." :
+               isFr ? "Triage d'alerte précoce à portée de main." :
+               isDe ? "Frühwarnsystem direkt auf Ihrem Gerät." :
+               isEs ? "Sistema de triaje temprano a tu alcance." :
+               "Early warning triage at your fingertips.",
+      description: isHi ? "पीसीओएस, एंडोमेट्रियोसिस और थायराइड असंतुलन के जोखिमों का गुमनाम रूप से मूल्यांकन करें। ऐवा लक्षणों को प्रमाणित, एन्क्रिप्टेड क्लिनिकल संक्षिप्त विवरण में संकलित करता है जिसे आप प्रिंट या पीडीएफ साझा कर सकते हैं।" :
+                   isGu ? "પીસીઓએસ, એન્ડોમેટ્રિઓસિસ અને થાઇરોઇડ અસંતુલન માટે અજ્ઞાત રૂપે જોขમોનું મૂલ્યાંકન કરો. Aeva આ બધી માહિતીને પ્રમાણિત અને એન્ક્રિપ્ટેડ ક્લિનિકલ બ્રીફમાં રૂપાંતરિત કરે છે જેને તમે ડૉક્ટર સાથે શેર કરી શકો છો." :
+                   isFr ? "Évaluez anonymement les indicateurs de SOPK, d'endométriose et de thyroïde. Aeva génère un rapport certifié et chiffré." :
+                   isDe ? "Anonymes Screening auf PCOS, Schilddrüsen- und Endometriose-Risiken." :
+                   isEs ? "Evaluación anónima de SOPK, tiroides y endometriosis." :
+                   "Evaluate risk indicators for PCOS, Endometriosis, and thyroid imbalances anonymously. Aeva compiles raw symptoms into a certified, encrypted clinical brief that you can print or PDF-share with your OBGYN.",
+      badge: isHi ? "चिकित्सा-श्रेणी संरेखण" :
+             isGu ? "મેડિકલ-ગ્રેડ સંરેખણ" :
+             isFr ? "Qualité Médicale" :
+             isDe ? "Medizinische Qualität" :
+             isEs ? "Calidad Médica" :
+             "Medical-Grade Alignment",
+      color: "bg-amber-100 text-amber-600 border-amber-200",
+      icon: Sparkles,
+      image: "/clinical_triage.png",
+      features: [
+        isHi ? "मान्य नैदानिक ​​स्क्रीनिंग चेकलिस्ट" :
+        isGu ? "જૈવિક ક્લિનિકલ સ્ક્રિનિંગ ચેકલિસ્ટ" :
+        isFr ? "Checklists validées cliniquement" :
+        isDe ? "Validierte klinische Checklisten" :
+        isEs ? "Listas de verificación clínicamente validadas" :
+        "Validated clinical screening checklists",
+
+        isHi ? "एक-क्लिक डॉक्टर-तैयार पीडीएफ रिपोर्ट" :
+        isGu ? "વન-ક્લિક ડૉક્ટર-રેડી પીડીએફ રિપોર્ટ" :
+        isFr ? "Rapports PDF prêts pour le médecin en un clic" :
+        isDe ? "Arzt-Rapporte als PDF mit einem Klick" :
+        isEs ? "Informes listos para el médico en un clic" :
+        "One-click doctor-ready PDF reports",
+
+        isHi ? "पूरी तरह से गुमनाम आत्म-मूल्यांकन" :
+        isGu ? "સંપૂર્ણપણે અનામી સ્વ-મૂલ્યાંકન" :
+        isFr ? "Auto-évaluations entièrement anonymes" :
+        isDe ? "Vollständig anonyme Selbsttests" :
+        isEs ? "Autoevaluaciones completamente anónimas" :
+        "Completely anonymous self-assessments"
+      ]
+    },
+    {
+      title: isHi ? "गुप्त पीयर सर्कल" :
+             isGu ? "અજ્ઞાત પીઅર સર્કલ" :
+             isFr ? "Cercles de Pairs Incognito" :
+             isDe ? "Inkognito-Zirkel" :
+             isEs ? "Círculos de Apoyo Anónimos" :
+             "Incognito Peer Circles",
+      tagline: isHi ? "वास्तविक सामुदायिक समर्थन, शून्य प्रकटीकरण।" :
+               isGu ? "વાસ્તવિક સામુદાયિક સપોર્ટ, શૂન્ય જોખમ." :
+               isFr ? "Soutien communautaire réel, exposition zéro." :
+               isDe ? "Echte Unterstützung, null Offenlegung." :
+               isEs ? "Apoyo real sin revelar tu identidad." :
+               "Real community support, zero exposure.",
+      description: isHi ? "रजोनिवृत्ति या हार्मोनल परिवर्तनों से जूझ रहे हैं? अपने सटीक चरण में महिलाओं से जुड़ें। अपना नाम या ईमेल प्रकट किए बिना गुमनाम रूप से पोस्ट करें, उपचार साझा करें और समर्थन का आदान-प्रदान करें।" :
+                   isGu ? "મેનોપોઝ અથવા હોર્મોનલ ફેરફારોથી પરેશાન છો? તમારા તબક્કાની મહિલાઓ સાથે જોડાઓ. નામ કે ઈમેલ જાહેર કર્યા વગર અનામી રીતે પોસ્ટ કરો, ઉપાયો શેર કરો અને સપોર્ટ મેળવો." :
+                   isFr ? "Partagez de manière anonyme des conseils de santé et soutenez d'autres femmes dans votre phase biologique." :
+                   isDe ? "Verbinden Sie sich anonym mit Frauen in Ihrer biologischen Phase." :
+                   isEs ? "Conéctate de manera anónima con otras mujeres en tu fase biológica." :
+                   "Struggling with menopause flashes or hormonal changes? Connect with women in your exact phase. Post anonymously, share remedies, and exchange support without revealing your name or email.",
+      badge: isHi ? "सुरक्षित स्थान" :
+             isGu ? "સુરક્ષિત જગ્યા" :
+             isFr ? "Espace Sécurisé" :
+             isDe ? "Sicherer Raum" :
+             isEs ? "Espacio Seguro" :
+             "Safe Space",
+      color: "bg-purple-100 text-purple-600 border-purple-200",
+      icon: Users,
+      image: "/peer_circle.png",
+      features: [
+        isHi ? "चरण-प्रतिबंधित पीयर फ़ीड एक्सेस" :
+        isGu ? "તબક્કા-પ્રતિબંધિત પીઅર ફીડ એક્સેસ" :
+        isFr ? "Accès restreint à votre phase biologique" :
+        isDe ? "Phasenbeschränkter Peer-Feed" :
+        isEs ? "Feed de apoyo exclusivo por fase" :
+        "Phase-restricted peer feed access",
+
+        isHi ? "सहानुभूतिपूर्ण 'गले लगाना' और प्रतिक्रियाएं" :
+        isGu ? "સહાનુભૂતિપૂર્ણ 'હગ્સ' અને પ્રતિક્રિયાઓ" :
+        isFr ? "'Hugs' et réactions d'empathie" :
+        isDe ? "Empathische Reaktionen wie 'Umarmungen'" :
+        isEs ? "Reacciones empáticas como 'Abrazos'" :
+        "Empathetic 'Hugs' & support reactions",
+
+        isHi ? "कोई प्रोफ़ाइल खोज या अनुक्रमण नहीं" :
+        isGu ? "કોઈ પ્રોફાઇલ શોધ અથવા ઇન્ડેક્સિંગ નથી" :
+        isFr ? "Aucune recherche de profil" :
+        isDe ? "Keine Profilsuche oder Indexierung" :
+        isEs ? "Sin búsqueda de perfiles ni indexación" :
+        "No profile lookup or search indexing"
+      ]
+    }
+  ];
+}
 
 
 interface AuthProps {
   onAuthSuccess: (uid: string, userEmail: string) => void;
   initialUserId?: string;
   initialUserEmail?: string;
+  language?: string;
 }
 
-export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEmail = "" }: AuthProps) {
+export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEmail = "", language = "en" }: AuthProps) {
+  const INTRO_SLIDES = getIntroSlides(language);
   // Onboarding States
   const [step, setStep] = useState(initialUserId ? 2 : 1);
   const [userId, setUserId] = useState(initialUserId);
