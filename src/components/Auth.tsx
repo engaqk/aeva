@@ -412,7 +412,7 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
         mode,
         cycleLength: mode === "cycle_sync" ? cycleLength : undefined,
         periodLength: mode === "cycle_sync" ? periodLength : undefined,
-        lastPeriodStart: mode === "cycle_sync" ? lastPeriodStart : undefined,
+        lastPeriodStart: mode === "cycle_sync" ? (lastPeriodStart || new Date().toISOString().split("T")[0]) : undefined,
         encryptedMedicalMetadata: "",
         photoHex: demoPhotoHex || undefined,
         photoType: demoPhotoType || undefined,
@@ -976,7 +976,7 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
           <button
             type="button"
             disabled={!demoName || !demoCity || !demoCountry || !demoMobile || !demoDob}
-            onClick={() => {
+            onClick={async () => {
               const selectedYear = new Date(demoDob).getFullYear();
               const currentYear = new Date().getFullYear();
               if (currentYear - selectedYear < 18) {
@@ -984,16 +984,13 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
                 return;
               }
               setError("");
-              setStep(3);
+              await handleOnboardingSubmit();
             }}
             className="w-full py-3.5 bg-rose-400 hover:bg-rose-500 disabled:bg-slate-350 text-white rounded-2xl font-bold text-sm transition-colors shadow-md cursor-pointer text-center"
           >
-            {language === "hi" ? "जारी रखें" :
-             language === "gu" ? "ચાલુ રાખો" :
-             language === "fr" ? "Continuer" :
-             language === "de" ? "Weiter" :
-             language === "es" ? "Continuar" :
-             "Continue to Health Vault Settings"}
+            {language === "hi" ? "प्रोफ़ाइल सहेजें और प्रारंभ करें" :
+             language === "gu" ? "પ્રોફાઇલ સાચવો અને શરૂ કરો" :
+             "Save Profile & Get Started"}
           </button>
         </div>
       )}
