@@ -1,19 +1,8 @@
 const nodemailer = require("nodemailer");
 
 // Check credentials
-const gmailUser = "aqkai52@gmail.com";
-const gmailPassword = process.env.GMAIL_APP_PASSWORD;
-
-if (!gmailPassword) {
-  console.error("ERROR: GMAIL_APP_PASSWORD environment variable is missing.");
-  console.error("\nTo generate a Gmail App Password:");
-  console.error("1. Go to your Google Account Settings -> Security.");
-  console.error("2. Enable 2-Step Verification if not already enabled.");
-  console.error("3. Search for 'App Passwords' and create one for 'Mail'.");
-  console.error("4. Set the environment variable and run: ");
-  console.error("   $env:GMAIL_APP_PASSWORD=\"xxxx xxxx xxxx xxxx\"; node scripts/send_notification.js recipient@example.com");
-  process.exit(1);
-}
+const gmailUser = "aeva.nine@gmail.com";
+const gmailPassword = process.env.GMAIL_APP_PASSWORD || "!@#Aeva";
 
 const recipient = process.argv[2] || "recipient@example.com";
 

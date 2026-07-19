@@ -9,9 +9,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing required fields: to, subject, html" }, { status: 400 });
     }
 
-    const gmailUser = "aqkai52@gmail.com";
+    const gmailUser = "aeva.nine@gmail.com";
     // Check if App Password is set in environment, otherwise fall back to raw password
-    const gmailPassword = process.env.GMAIL_APP_PASSWORD || "!@#Qadir53";
+    const gmailPassword = process.env.GMAIL_APP_PASSWORD || "!@#Aeva";
 
     const transporter = nodemailer.createTransport({
       service: "gmail",

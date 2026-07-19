@@ -569,7 +569,7 @@ export default function AdminPanel() {
             </div>
             
             <p className="text-[11px] text-slate-700 leading-relaxed">
-              Dispatch cycle-specific bio-guidelines and security warnings to users directly from <code className="bg-cream-100 px-1 py-0.5 rounded font-mono font-bold text-[10px]">aqkai52@gmail.com</code> via secure Gmail SMTP.
+              Dispatch cycle-specific bio-guidelines and security warnings to users directly from <code className="bg-cream-100 px-1 py-0.5 rounded font-mono font-bold text-[10px]">aeva.nine@gmail.com</code> via secure Gmail SMTP.
             </p>
 
             <div className="space-y-3.5 text-xs">
@@ -623,7 +623,7 @@ export default function AdminPanel() {
                 {dispatchStatus === "sending" && (
                   <div className="flex items-center gap-2">
                     <RefreshCw className="w-3.5 h-3.5 animate-spin text-rose-400" />
-                    <span>Connecting to smtp.gmail.com:465... Authenticating aqkai52@gmail.com...</span>
+                    <span>Connecting to smtp.gmail.com:465... Authenticating aeva.nine@gmail.com...</span>
                   </div>
                 )}
                 {dispatchStatus === "success" && (
@@ -671,7 +671,7 @@ export default function AdminPanel() {
             </div>
 
             <div className="bg-cream-50/50 p-4 rounded-2xl border border-cream-200/40 text-[10px] space-y-1 text-slate-700">
-              <div><strong className="text-slate-800">From:</strong> Aeva Biology Sync &lt;aqkai52@gmail.com&gt;</div>
+              <div><strong className="text-slate-800">From:</strong> Aeva Biology Sync &lt;aeva.nine@gmail.com&gt;</div>
               <div><strong className="text-slate-800">To:</strong> {recipientEmail || "recipient@example.com"}</div>
               <div><strong className="text-slate-800">Subject:</strong> {activeTemplate.subject}</div>
             </div>
