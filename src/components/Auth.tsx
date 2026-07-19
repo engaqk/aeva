@@ -338,23 +338,13 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
 
   const handleGoogleAuth = async () => {
     setError("");
-    
-    if (isFirebaseConfigured) {
-      setLoading(true);
-      try {
-        const user = await signInWithGoogle();
-        await proceedGoogleAuthSuccess(user);
-      } catch (err: any) {
-        setError(err.message || "Google Sign-In failed.");
-        setLoading(false);
-      }
-    } else {
-      // Local fallback mode: login directly with default Gmail
-      const mockEmailStr = "hasan@gmail.com";
-      const uid = "mock_google_uid_" + bufToHex(new TextEncoder().encode(mockEmailStr)).substring(0, 12);
-      const user = { uid, email: mockEmailStr };
-      localStorage.setItem("aeva_user", JSON.stringify(user));
+    setLoading(true);
+    try {
+      const user = await signInWithGoogle();
       await proceedGoogleAuthSuccess(user);
+    } catch (err: any) {
+      setError(err.message || "Google Sign-In failed.");
+      setLoading(false);
     }
   };
 

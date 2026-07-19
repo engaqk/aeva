@@ -176,27 +176,14 @@ export async function signIn(email: string, pass: string) {
 }
 
 export async function signInWithGoogle() {
-  if (isFirebaseConfigured && auth) {
-    try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: "select_account" });
-      const cred = await signInWithPopup(auth, provider);
-      return { uid: cred.user.uid, email: cred.user.email };
-    } catch (e: any) {
-      console.warn("Firebase Google Sign-In failed, falling back to Local Mode:", e);
-      return fallbackLocalGoogle();
-    }
+  if (auth) {
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+    const cred = await signInWithPopup(auth, provider);
+    return { uid: cred.user.uid, email: cred.user.email };
   } else {
-    return fallbackLocalGoogle();
+    throw new Error("Google Authentication is not initialized. Please configure your Firebase environment variables to verify your email through Google.");
   }
-}
-
-function fallbackLocalGoogle() {
-  const uid = "google_local_user_" + Math.random().toString(36).substring(2, 9);
-  const user = { uid, email: "local_google_user@gmail.com" };
-  localStorage.setItem("aeva_user", JSON.stringify(user));
-  triggerLocalAuthChange();
-  return user;
 }
 
 export async function signOut() {
