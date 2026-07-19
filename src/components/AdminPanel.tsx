@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { getAllUsers, AdminUserRecord, getRecentDailyLogs, saveProfile, saveDailyLog } from "@/lib/services";
 import { 
   Users, Clipboard, BarChart3, Search, UserCheck, Activity, Calendar, 
-  ShieldAlert, Sparkles, Check, Database, RefreshCw, Mail, Send, Eye, BookOpen, AlertTriangle, X 
+  ShieldAlert, Sparkles, Check, Database, RefreshCw, Mail, Send, Eye, BookOpen, AlertTriangle, X, Flower 
 } from "lucide-react";
 
 const NOTIFICATION_TEMPLATES = [
@@ -374,9 +374,26 @@ export default function AdminPanel() {
                         : "bg-white border-cream-200 hover:bg-cream-100/50"
                     }`}
                   >
-                    <div className="space-y-0.5 truncate pr-2">
-                      <span className="font-semibold text-slate-800 block truncate">{u.email}</span>
-                      <span className="text-[9px] text-slate-700 block font-mono truncate">UID: {u.uid}</span>
+                    <div className="flex items-center gap-3 truncate pr-2 flex-1">
+                      {u.profile?.demographics?.photoHex ? (
+                        <img 
+                          src={u.profile.demographics.photoHex} 
+                          alt="" 
+                          className="w-9 h-9 rounded-full object-cover border border-cream-200 shadow-xs shrink-0" 
+                        />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-rose-50 text-rose-400 border border-rose-100 flex items-center justify-center shrink-0">
+                          <Flower className="w-5 h-5" />
+                        </div>
+                      )}
+                      <div className="space-y-0.5 truncate">
+                        <span className="font-bold text-slate-800 block truncate">
+                          {u.profile?.demographics?.name || "Unregistered User"}
+                        </span>
+                        <span className="text-[10px] text-slate-700 block font-mono truncate">
+                          {u.email}
+                        </span>
+                      </div>
                     </div>
                     <div className="text-right shrink-0">
                       <span className="px-2 py-0.5 rounded-full font-bold text-[9px] bg-cream-200 text-slate-700 block mb-1">
@@ -414,8 +431,8 @@ export default function AdminPanel() {
                           className="w-10 h-10 rounded-full object-cover border border-cream-200 shadow-xs shrink-0"
                         />
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-rose-50 text-rose-500 border border-rose-100 flex items-center justify-center font-bold text-[10px] shrink-0">
-                          {selectedUser.profile.demographics.name?.substring(0, 2).toUpperCase() || "US"}
+                        <div className="w-10 h-10 rounded-full bg-rose-50 text-rose-400 border border-rose-100 flex items-center justify-center shrink-0">
+                          <Flower className="w-5 h-5" />
                         </div>
                       )}
                       <div className="space-y-0.5">

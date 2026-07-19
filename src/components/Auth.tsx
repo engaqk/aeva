@@ -331,41 +331,6 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
     }
   };
 
-  const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-
-    try {
-      if (isLogin) {
-        // Sign In
-        const user = await signIn(email, password);
-        const salt = bufToHex(new TextEncoder().encode(email + "_aevasalt"));
-        const derived = await deriveKeyFromPassword(password, salt);
-        localStorage.setItem(`aeva_master_key_${user.uid}`, derived);
-        
-        const registered = await checkUserRegistered(user.uid);
-        if (registered) {
-          onAuthSuccess(user.uid, user.email || email);
-        } else {
-          setUserId(user.uid);
-          setUserEmailAddress(user.email || email);
-          setStep(2); // Go to demographics setup
-        }
-      } else {
-        // Sign Up / Register
-        const user = await signUp(email, password);
-        setUserId(user.uid);
-        setUserEmailAddress(user.email || email);
-        setStep(2); // Go to demographics setup
-      }
-    } catch (err: any) {
-      setError(err.message || "Authentication failed. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleGoogleAuth = async () => {
     setError("");
     
@@ -387,6 +352,7 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
 
   const proceedGoogleAuthSuccess = async (user: { uid: string; email: string | null }) => {
     setLoading(true);
+    setError("");
     try {
       const salt = bufToHex(new TextEncoder().encode((user.email || "google_user") + "_aevasalt"));
       let keyHex = localStorage.getItem(`aeva_master_key_${user.uid}`);
@@ -396,12 +362,21 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
       }
 
       const registered = await checkUserRegistered(user.uid);
-      if (registered) {
-        onAuthSuccess(user.uid, user.email || "local_google_user@gmail.com");
+      if (isLogin) {
+        if (registered) {
+          onAuthSuccess(user.uid, user.email || "local_google_user@gmail.com");
+        } else {
+          setError("This account is not registered. Please switch to the 'Register' tab first.");
+          localStorage.removeItem("aeva_user");
+        }
       } else {
-        setUserId(user.uid);
-        setUserEmailAddress(user.email || "local_google_user@gmail.com");
-        setStep(2); // Go to demographics setup
+        if (registered) {
+          setError("This account is already registered. Please switch to the 'Sign In' tab to log in directly.");
+        } else {
+          setUserId(user.uid);
+          setUserEmailAddress(user.email || "local_google_user@gmail.com");
+          setStep(2); // Go to demographics setup
+        }
       }
     } catch (err: any) {
       setError(err.message || "Encryption key initialization failed.");
@@ -543,7 +518,7 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
                 // Comparison Slide
                 <div key="comparison" className="space-y-4 animate-slide-in">
                   <div className="flex items-center justify-between">
-                    <span className="text-[9px] uppercase tracking-widest text-rose-500 font-extrabold px-2.5 py-1 bg-rose-50 border border-rose-100 rounded-full font-bold font-bold">
+                    <span className="text-[9px] uppercase tracking-widest text-rose-500 font-extrabold px-2.5 py-1 bg-rose-50 border border-rose-100 rounded-full font-bold">
                       The Aeva Difference
                     </span>
                     <span className="text-[10px] font-bold text-slate-700">
@@ -737,7 +712,10 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
             <div className="flex w-full gap-1.5 p-1.5 bg-cream-100/60 rounded-2xl border border-cream-200/50 mb-1">
               <button
                 type="button"
-                onClick={() => setIsLogin(true)}
+                onClick={() => {
+                  setIsLogin(true);
+                  setError("");
+                }}
                 className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   isLogin
                     ? "bg-white text-rose-500 shadow-xs border border-rose-100/50"
@@ -753,7 +731,10 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
               </button>
               <button
                 type="button"
-                onClick={() => setIsLogin(false)}
+                onClick={() => {
+                  setIsLogin(false);
+                  setError("");
+                }}
                 className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   !isLogin
                     ? "bg-white text-rose-500 shadow-xs border border-rose-100/50"
@@ -807,84 +788,6 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
               </span>
             </button>
 
-            {/* Separator */}
-            <div className="w-full flex items-center justify-center gap-2 py-1 text-slate-700 text-[10px] font-bold uppercase tracking-wider">
-              <span className="h-[1px] bg-cream-200 flex-1"></span>
-              <span>
-                {language === "hi" ? "या क्रेडेंशियल" :
-                 language === "gu" ? "અથવા ઓળખપત્રો" :
-                 language === "fr" ? "ou identifiants" :
-                 language === "de" ? "oder Anmeldedaten" :
-                 language === "es" ? "o credenciales" :
-                 "or credentials"}
-              </span>
-              <span className="h-[1px] bg-cream-200 flex-1"></span>
-            </div>
-
-            {/* Traditional Credentials Form */}
-            <form onSubmit={handleAuth} className="w-full space-y-3.5 text-left">
-              <div className="space-y-1">
-                <label className="text-[9px] uppercase tracking-wider font-bold text-slate-700">
-                  {language === "hi" ? "उपयोगकर्ता नाम या ईमेल" :
-                   language === "gu" ? "વપરાશકર્તા નામ અથવા ઇમેઇલ" :
-                   language === "fr" ? "Identifiant ou E-mail" :
-                   language === "de" ? "Benutzername oder E-Mail" :
-                   language === "es" ? "Usuario o E-mail" :
-                   "Username / Email"}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="e.g. user@aeva.com"
-                  className="w-full px-3.5 py-3 bg-cream-100/50 border border-cream-200 rounded-2xl text-xs focus:border-rose-300 focus:outline-none text-slate-800"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[9px] uppercase tracking-wider font-bold text-slate-700">
-                  {language === "hi" ? "पासवर्ड" :
-                   language === "gu" ? "પાસવર્ડ" :
-                   language === "fr" ? "Mot de passe" :
-                   language === "de" ? "Passwort" :
-                   language === "es" ? "Contraseña" :
-                   "Password"}
-                </label>
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full px-3.5 py-3 bg-cream-100/50 border border-cream-200 rounded-2xl text-xs focus:border-rose-300 focus:outline-none text-slate-800"
-                />
-              </div>
-              
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3.5 bg-slate-750 hover:bg-slate-800 text-white text-xs font-bold rounded-2xl transition-all cursor-pointer active:scale-95 transform shadow-sm flex items-center justify-center gap-1.5 disabled:bg-slate-500"
-              >
-                {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                <span>
-                  {isLogin
-                    ? (language === "hi" ? "सत्यापित करें और लॉगिन करें" :
-                       language === "gu" ? "ચકાસો અને લોગિન કરો" :
-                       language === "fr" ? "Vérifier & Entrer" :
-                       language === "de" ? "Bestätigen & Beitreten" :
-                       language === "es" ? "Verificar e Ingresar" :
-                       "Verify & Sign In")
-                    : (language === "hi" ? "रजिस्टर करें और जारी रखें" :
-                       language === "gu" ? "રજીસ્ટર કરો અને ચાલુ રાખો" :
-                       language === "fr" ? "S'inscrire & Continuer" :
-                       language === "de" ? "Registrieren & Weiter" :
-                       language === "es" ? "Registrarse y Continuar" :
-                       "Register & Continue")
-                  }
-                </span>
-              </button>
-            </form>
-
             <div className="flex flex-col gap-2.5 mt-2 items-center w-full">
               <button
                 type="button"
@@ -925,6 +828,61 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
           <div className="flex items-center justify-center gap-2 text-xs text-slate-700 text-center px-4">
             <Shield className="w-4 h-4 text-sage-500" />
             <span>GDPR/HIPAA Strict: Client-side end-to-end encryption active</span>
+          </div>
+        </div>
+      )}
+
+      {/* Mock Google Account Chooser Modal */}
+      {showMockGoogle && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-[390px] rounded-[36px] p-6 shadow-2xl space-y-5 border border-cream-200 animate-scale-up text-left">
+            <div className="text-center space-y-1.5 pb-2 border-b border-cream-100">
+              {/* Google logo colored */}
+              <div className="flex justify-center gap-0.5 text-xl font-bold font-sans">
+                <span className="text-blue-500 font-extrabold text-[22px]">G</span>
+                <span className="text-red-500 font-extrabold text-[22px]">o</span>
+                <span className="text-yellow-500 font-extrabold text-[22px]">o</span>
+                <span className="text-blue-500 font-extrabold text-[22px]">g</span>
+                <span className="text-green-500 font-extrabold text-[22px]">l</span>
+                <span className="text-red-500 font-extrabold text-[22px]">e</span>
+              </div>
+              <h3 className="font-semibold text-sm text-slate-800 text-center">Choose an account</h3>
+              <p className="text-xs text-slate-700 text-center">to continue to <strong className="text-rose-400">Aeva</strong></p>
+            </div>
+
+            {/* Account List */}
+            <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+              {[
+                { name: "Hasan", email: "hasan@gmail.com", avatar: "H" },
+                { name: "Sarah", email: "sarah@gmail.com", avatar: "S" },
+                { name: "Test User", email: "test@gmail.com", avatar: "T" },
+                { name: "Aeva Demo", email: "aeva.demo@gmail.com", avatar: "A" }
+              ].map((acc, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => handleSelectMockGoogleEmail(acc.email)}
+                  className="w-full flex items-center gap-3 p-3 hover:bg-cream-50 rounded-2xl border border-cream-100/60 transition-all text-left cursor-pointer active:scale-[0.99] group"
+                >
+                  <div className="w-9 h-9 rounded-full bg-rose-100 text-rose-500 font-bold flex items-center justify-center text-sm shadow-inner group-hover:bg-rose-200 transition-colors">
+                    {acc.avatar}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-slate-800 truncate">{acc.name}</p>
+                    <p className="text-[10px] text-slate-700 truncate">{acc.email}</p>
+                  </div>
+                  <span className="text-[9px] font-bold text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity">Select</span>
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowMockGoogle(false)}
+              className="w-full py-3 bg-cream-200 hover:bg-cream-300 text-slate-800 text-xs font-semibold rounded-2xl transition-colors focus:outline-none cursor-pointer text-center"
+            >
+              Cancel
+            </button>
           </div>
         </div>
       )}
