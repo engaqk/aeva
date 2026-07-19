@@ -23,7 +23,7 @@ import {
 } from "firebase/firestore";
 
 // Helper to wrap promises with a timeout to prevent hanging on misconfigured Firestore databases
-function withTimeout<T>(promise: Promise<T>, ms = 2000): Promise<T> {
+function withTimeout<T>(promise: Promise<T>, ms = 10000): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => {
       reject(new Error("Firestore database connection timed out"));
