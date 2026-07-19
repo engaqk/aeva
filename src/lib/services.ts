@@ -24,10 +24,11 @@ import {
 
 // Helper to wrap promises with a timeout to prevent hanging on misconfigured Firestore databases
 function withTimeout<T>(promise: Promise<T>, ms = 10000): Promise<T> {
+  const timeoutMs = Math.max(ms, 10000);
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => {
       reject(new Error("Firestore database connection timed out"));
-    }, ms);
+    }, timeoutMs);
     promise
       .then((res) => {
         clearTimeout(timer);
@@ -195,6 +196,24 @@ export async function signOut() {
   }
 }
 
+function cleanUndefined(obj: any): any {
+  if (obj === null || obj === undefined) return null;
+  if (Array.isArray(obj)) {
+    return obj.map(cleanUndefined);
+  }
+  if (typeof obj === "object") {
+    const cleaned: any = {};
+    for (const key of Object.keys(obj)) {
+      const val = obj[key];
+      if (val !== undefined) {
+        cleaned[key] = cleanUndefined(val);
+      }
+    }
+    return cleaned;
+  }
+  return obj;
+}
+
 // User Profile Operations
 export async function saveProfile(uid: string, profile: UserProfile, email?: string) {
   const emailVal = email || `${uid.substring(0, 8)}@aeva.com`;
@@ -223,11 +242,11 @@ export async function saveProfile(uid: string, profile: UserProfile, email?: str
   if (isFirebaseConfigured && db) {
     try {
       const userDocRef = doc(db, "users", uid);
-      const data: any = { profile };
+      const data: any = { profile: cleanUndefined(profile) };
       if (email) {
         data.email = email;
       }
-      await withTimeout(setDoc(userDocRef, data, { merge: true }), 2000);
+      await withTimeout(setDoc(userDocRef, data, { merge: true }));
     } catch (e) {
       console.warn("Firestore saveProfile failed, falling back to LocalStorage:", e);
       localStorage.setItem(`aeva_profile_${uid}`, JSON.stringify(profile));
@@ -241,7 +260,7 @@ export async function getProfile(uid: string): Promise<UserProfile | null> {
   if (isFirebaseConfigured && db) {
     try {
       const userDocRef = doc(db, "users", uid);
-      const docSnap = await withTimeout(getDoc(userDocRef), 2000);
+      const docSnap = await withTimeout(getDoc(userDocRef));
       if (docSnap.exists()) {
         const data = docSnap.data();
         return data.profile || null;

@@ -142,6 +142,19 @@ export default function Home() {
       setAuthChecking(false);
       
       if (currUser) {
+        // Auto-heal master key if missing from localStorage on refresh
+        const keyKey = `aeva_master_key_${currUser.uid}`;
+        if (typeof window !== "undefined" && !localStorage.getItem(keyKey)) {
+          try {
+            const { deriveKeyFromPassword, bufToHex } = await import("@/lib/crypto");
+            const salt = bufToHex(new TextEncoder().encode((currUser.email || "google_user") + "_aevasalt"));
+            const derived = await deriveKeyFromPassword(currUser.uid, salt);
+            localStorage.setItem(keyKey, derived);
+          } catch (e) {
+            console.error("Auto-heal master key failed:", e);
+          }
+        }
+
         setProfileLoading(true);
         try {
           const uProfile = await getProfile(currUser.uid);
