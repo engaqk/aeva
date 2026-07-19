@@ -374,7 +374,8 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
         }
       } else {
         if (registered) {
-          setError("This account is already registered. Please switch to the 'Sign In' tab to log in directly.");
+          await recordLogin(user.uid, emailVal);
+          onAuthSuccess(user.uid, emailVal);
         } else {
           setUserId(user.uid);
           setUserEmailAddress(emailVal);

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { subscribeAuth, getProfile, UserProfile } from "@/lib/services";
+import { subscribeAuth, getProfile, UserProfile, signOut } from "@/lib/services";
 import Auth from "@/components/Auth";
 import Dashboard from "@/components/Dashboard";
 import SymptomLog from "@/components/SymptomLog";
@@ -9,7 +9,7 @@ import AIClinic from "@/components/AIClinic";
 import PrivacyVault from "@/components/PrivacyVault";
 import DevicesPanel from "@/components/DevicesPanel";
 import SocialCircle from "@/components/SocialCircle";
-import { Heart, ClipboardList, Sparkles, Shield, Loader2, Watch, Users, Globe } from "lucide-react";
+import { Heart, ClipboardList, Sparkles, Shield, Loader2, Users, Globe, LogOut } from "lucide-react";
 import { TRANSLATIONS, LanguageCode } from "@/lib/translations";
 
 type TabType = "dashboard" | "symptom_log" | "ai_clinic" | "privacy_vault" | "social_circle" | "devices";
@@ -192,13 +192,19 @@ export default function Home() {
     setProfile(newProfile);
   };
 
-  const handleLogout = () => {
-    setUser(null);
-    setProfile(null);
-    setActiveTab("dashboard");
+  const handleLogout = async () => {
+    const confirmMsg = language === "hi" ? "क्या आप वाकई साइन आउट करना चाहते हैं?" :
+                       language === "gu" ? "શું તમે ખરેખર સાઇન આઉટ કરવા માંગો છો?" :
+                       "Are you sure you want to sign out?";
+    if (window.confirm(confirmMsg)) {
+      await signOut();
+      setUser(null);
+      setProfile(null);
+      setActiveTab("dashboard");
+    }
   };
 
-  if (authChecking) {
+  if (authChecking || (user && profileLoading)) {
     return (
       <div className="flex flex-col items-center justify-center flex-1 space-y-3 bg-cream-50">
         <Loader2 className="w-8 h-8 text-rose-400 animate-spin" />
@@ -208,7 +214,7 @@ export default function Home() {
   }
 
   const hasMasterKey = user ? (typeof window !== "undefined" && !!localStorage.getItem(`aeva_master_key_${user.uid}`)) : false;
-  const isUserAuthenticated = !!user && hasMasterKey;
+  const isUserAuthenticated = !!user && hasMasterKey && !!profile && !!profile.demographicsFilled;
 
   return (
     <div className="relative flex flex-col flex-1 h-full overflow-hidden bg-cream-50">
@@ -365,15 +371,21 @@ export default function Home() {
                 { id: "dashboard", label: "Dashboard", icon: Heart },
                 { id: "symptom_log", label: "Log Daily", icon: ClipboardList },
                 { id: "ai_clinic", label: "AI Clinic", icon: Sparkles },
-                { id: "devices", label: "Devices", icon: Watch },
                 { id: "social_circle", label: "Circle", icon: Users },
-                { id: "privacy_vault", label: "Privacy", icon: Shield }
+                { id: "privacy_vault", label: "Privacy", icon: Shield },
+                { id: "logout", label: "Logout", icon: LogOut }
               ].map((tab) => {
                 const isActive = activeTab === tab.id;
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id as TabType)}
+                    onClick={() => {
+                      if (tab.id === "logout") {
+                        handleLogout();
+                      } else {
+                        setActiveTab(tab.id as TabType);
+                      }
+                    }}
                     className="flex flex-col items-center justify-center w-16 h-12 transition-all group relative"
                   >
                     <div className={`p-1.5 rounded-2xl transition-all ${
@@ -387,9 +399,9 @@ export default function Home() {
                       {tab.id === "dashboard" ? (TRANSLATIONS[language]?.dashboard || "Dashboard") :
                        tab.id === "symptom_log" ? (TRANSLATIONS[language]?.logDaily || "Log Daily") :
                        tab.id === "ai_clinic" ? (TRANSLATIONS[language]?.aiClinic || "AI Clinic") :
-                       tab.id === "devices" ? (TRANSLATIONS[language]?.devices || "Devices") :
                        tab.id === "social_circle" ? (TRANSLATIONS[language]?.circle || "Circle") :
-                       (TRANSLATIONS[language]?.privacy || "Privacy")}
+                       tab.id === "privacy_vault" ? (TRANSLATIONS[language]?.privacy || "Privacy") :
+                       (language === "hi" ? "लॉगआउट" : language === "gu" ? "લોગઆઉટ" : "Logout")}
                     </span>
                   </button>
                 );
