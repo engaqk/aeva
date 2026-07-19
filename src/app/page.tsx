@@ -168,8 +168,13 @@ export default function Home() {
     };
   }, []);
 
-  const handleAuthSuccess = async (uid: string, email: string) => {
+  const handleAuthSuccess = async (uid: string, email: string, completedProfile?: UserProfile) => {
     setUser({ uid, email });
+    if (completedProfile) {
+      setProfile(completedProfile);
+      setActiveTab("dashboard");
+      return;
+    }
     setProfileLoading(true);
     try {
       const uProfile = await getProfile(uid);

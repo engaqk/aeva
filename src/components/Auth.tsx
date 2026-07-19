@@ -223,7 +223,7 @@ function getIntroSlides(lang: string) {
 
 
 interface AuthProps {
-  onAuthSuccess: (uid: string, userEmail: string) => void;
+  onAuthSuccess: (uid: string, userEmail: string, completedProfile?: any) => void;
   initialUserId?: string;
   initialUserEmail?: string;
   language?: string;
@@ -438,7 +438,7 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
       localStorage.setItem(`aeva_profile_${userId}`, JSON.stringify(profile));
       localStorage.setItem(`aeva_demographics_${userId}`, JSON.stringify(profile.demographics));
 
-      onAuthSuccess(userId, userEmailAddress);
+      onAuthSuccess(userId, userEmailAddress, profile);
     } catch (err: any) {
       setError(err.message || "Failed to finalize setup.");
     } finally {
