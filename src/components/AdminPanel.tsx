@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { getAllUsers, AdminUserRecord, getRecentDailyLogs, saveProfile, saveDailyLog } from "@/lib/services";
+import { getAllUsers, AdminUserRecord, getRecentDailyLogs, saveProfile, saveDailyLog, getRegistrationLogs, getLoginLogs, RegistrationRecord, LoginRecord } from "@/lib/services";
 import { 
   Users, Clipboard, BarChart3, Search, UserCheck, Activity, Calendar, 
   ShieldAlert, Sparkles, Check, Database, RefreshCw, Mail, Send, Eye, BookOpen, AlertTriangle, X, Flower 
@@ -64,7 +64,9 @@ export default function AdminPanel() {
   const [seedSuccess, setSeedSuccess] = useState(false);
 
   // Dispatcher States
-  const [activeTab, setActiveTab] = useState<"users" | "dispatcher">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "dispatcher" | "audit">("users");
+  const [registrationLogs, setRegistrationLogs] = useState<RegistrationRecord[]>([]);
+  const [loginLogs, setLoginLogs] = useState<LoginRecord[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState("luteal");
   const [recipientEmail, setRecipientEmail] = useState("");
   const [dispatchStatus, setDispatchStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
@@ -76,6 +78,10 @@ export default function AdminPanel() {
     try {
       const data = await getAllUsers();
       setUsers(data);
+      const regs = await getRegistrationLogs();
+      setRegistrationLogs(regs);
+      const logins = await getLoginLogs();
+      setLoginLogs(logins);
     } catch (e) {
       console.error(e);
     } finally {
@@ -283,6 +289,18 @@ export default function AdminPanel() {
         >
           <Mail className="w-4 h-4" />
           <span>Notification Dispatcher</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("audit")}
+          className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            activeTab === "audit"
+              ? "bg-white text-rose-500 shadow-sm border border-rose-100"
+              : "text-slate-700 hover:text-slate-800"
+          }`}
+        >
+          <Clipboard className="w-4 h-4" />
+          <span>Audit & Access Logs</span>
         </button>
       </div>
 
@@ -742,6 +760,81 @@ export default function AdminPanel() {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === "audit" && (
+        <div className="space-y-6 animate-fade-in text-left">
+          {/* Audit header summary */}
+          <div className="bg-white p-5 rounded-3xl border border-cream-200/60 shadow-sm space-y-2">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+              <ShieldAlert className="w-4.5 h-4.5 text-rose-400" />
+              Security Audit & Activity Logs
+            </h3>
+            <p className="text-[11px] text-slate-700 leading-relaxed">
+              Real-time audit trails of user registrations and login activities with verified Google Auth timestamps. All data is backed up securely in Firestore.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Registration Logs table */}
+            <div className="bg-white p-5 rounded-3xl border border-cream-200/60 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-cream-200 pb-2">
+                <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <Activity className="w-4 h-4 text-rose-400" />
+                  Registration Trail ({registrationLogs.length})
+                </h4>
+              </div>
+
+              {registrationLogs.length === 0 ? (
+                <p className="text-xs text-slate-700 italic text-center py-4">No registration logs recorded yet.</p>
+              ) : (
+                <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
+                  {registrationLogs.map((reg, idx) => (
+                    <div key={idx} className="bg-cream-50/50 p-3 rounded-2xl border border-cream-100 flex flex-col space-y-1 text-xs">
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-slate-850 truncate">{reg.email}</span>
+                        <span className="px-2 py-0.5 bg-rose-50 border border-rose-100 text-rose-500 text-[8px] font-bold rounded-full uppercase">Registered</span>
+                      </div>
+                      <div className="flex justify-between items-center text-[9px] text-slate-700 font-semibold">
+                        <span className="font-mono">UID: {reg.uid.substring(0, 15)}...</span>
+                        <span>{new Date(reg.timestamp).toLocaleString()}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Login Logs table */}
+            <div className="bg-white p-5 rounded-3xl border border-cream-200/60 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-cream-200 pb-2">
+                <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <UserCheck className="w-4 h-4 text-sage-500" />
+                  Sign-In Session History ({loginLogs.length})
+                </h4>
+              </div>
+
+              {loginLogs.length === 0 ? (
+                <p className="text-xs text-slate-700 italic text-center py-4">No login sessions recorded yet.</p>
+              ) : (
+                <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
+                  {loginLogs.map((log, idx) => (
+                    <div key={idx} className="bg-cream-50/50 p-3 rounded-2xl border border-cream-100 flex flex-col space-y-1 text-xs">
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-slate-850 truncate">{log.email}</span>
+                        <span className="px-2 py-0.5 bg-sage-50 border border-sage-100 text-sage-600 text-[8px] font-bold rounded-full uppercase">Logged In</span>
+                      </div>
+                      <div className="flex justify-between items-center text-[9px] text-slate-700 font-semibold">
+                        <span className="font-mono">UID: {log.uid.substring(0, 15)}...</span>
+                        <span>{new Date(log.timestamp).toLocaleString()}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

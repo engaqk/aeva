@@ -671,3 +671,93 @@ function updateLocalReaction(postId: string, reactionType: "likes" | "hugs") {
     localStorage.setItem("aeva_social_posts", JSON.stringify(localPosts));
   }
 }
+
+export interface RegistrationRecord {
+  uid: string;
+  email: string;
+  timestamp: string;
+}
+
+export interface LoginRecord {
+  uid: string;
+  email: string;
+  timestamp: string;
+}
+
+export async function recordRegistration(uid: string, email: string) {
+  const timestamp = new Date().toISOString();
+  const rec: RegistrationRecord = { uid, email, timestamp };
+
+  try {
+    const logs = JSON.parse(localStorage.getItem("aeva_registrations") || "[]");
+    logs.push(rec);
+    localStorage.setItem("aeva_registrations", JSON.stringify(logs));
+  } catch (e) {
+    console.warn("Failed to save registration locally:", e);
+  }
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const regDocRef = doc(db, "registrations", uid);
+      await withTimeout(setDoc(regDocRef, rec), 2000);
+    } catch (e) {
+      console.warn("Firestore recordRegistration failed:", e);
+    }
+  }
+}
+
+export async function recordLogin(uid: string, email: string) {
+  const timestamp = new Date().toISOString();
+  const rec: LoginRecord = { uid, email, timestamp };
+
+  try {
+    const logs = JSON.parse(localStorage.getItem("aeva_logins") || "[]");
+    logs.push(rec);
+    localStorage.setItem("aeva_logins", JSON.stringify(logs));
+  } catch (e) {
+    console.warn("Failed to save login locally:", e);
+  }
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const loginDocRef = doc(collection(db, "logins"));
+      await withTimeout(setDoc(loginDocRef, rec), 2000);
+    } catch (e) {
+      console.warn("Firestore recordLogin failed:", e);
+    }
+  }
+}
+
+export async function getRegistrationLogs(): Promise<RegistrationRecord[]> {
+  if (isFirebaseConfigured && db) {
+    try {
+      const qSnap = await withTimeout(getDocs(collection(db, "registrations")), 2000);
+      const list: RegistrationRecord[] = [];
+      qSnap.forEach(d => {
+        list.push(d.data() as RegistrationRecord);
+      });
+      return list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    } catch (e) {
+      console.warn("Firestore getRegistrationLogs failed:", e);
+    }
+  }
+  const list = JSON.parse(localStorage.getItem("aeva_registrations") || "[]") as RegistrationRecord[];
+  return list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+}
+
+export async function getLoginLogs(): Promise<LoginRecord[]> {
+  if (isFirebaseConfigured && db) {
+    try {
+      const qSnap = await withTimeout(getDocs(collection(db, "logins")), 2000);
+      const list: LoginRecord[] = [];
+      qSnap.forEach(d => {
+        list.push(d.data() as LoginRecord);
+      });
+      return list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    } catch (e) {
+      console.warn("Firestore getLoginLogs failed:", e);
+    }
+  }
+  const list = JSON.parse(localStorage.getItem("aeva_logins") || "[]") as LoginRecord[];
+  return list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+}

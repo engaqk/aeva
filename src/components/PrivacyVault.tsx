@@ -2,18 +2,20 @@
 
 import React, { useState, useEffect } from "react";
 import { generateMasterKey, deriveKeyFromPassword, bufToHex } from "@/lib/crypto";
-import { Shield, Key, Eye, EyeOff, Copy, Check, Upload, AlertTriangle, RefreshCw, LogOut, Users, Sparkles, X } from "lucide-react";
-import { signOut } from "@/lib/services";
+import { Shield, Key, Eye, EyeOff, Copy, Check, Upload, AlertTriangle, RefreshCw, LogOut, Users, Sparkles, X, Flower } from "lucide-react";
+import { signOut, saveProfile, UserProfile } from "@/lib/services";
 import { TRANSLATIONS, LanguageCode } from "@/lib/translations";
 
 interface PrivacyVaultProps {
   uid: string;
   userEmail: string;
+  profile: UserProfile | null;
+  onProfileUpdate: (newProfile: UserProfile) => void;
   onLogout: () => void;
   language?: any;
 }
 
-export default function PrivacyVault({ uid, userEmail, onLogout, language = "en" }: PrivacyVaultProps) {
+export default function PrivacyVault({ uid, userEmail, profile, onProfileUpdate, onLogout, language = "en" }: PrivacyVaultProps) {
   const t = (key: string) => {
     return TRANSLATIONS[language as LanguageCode]?.[key] || TRANSLATIONS["en"]?.[key] || key;
   };
@@ -166,6 +168,113 @@ export default function PrivacyVault({ uid, userEmail, onLogout, language = "en"
           {isAdmin ? <AlertTriangle className="w-4 h-4 animate-bounce" /> : <LogOut className="w-4 h-4" />}
         </button>
       </div>
+
+      {/* User Profile Demographics & Avatar Upload */}
+      {profile?.demographics && (
+        <div className="bg-white p-5 rounded-3xl border border-cream-200/60 shadow-sm space-y-4 animate-fade-in text-left">
+          <div className="flex items-center gap-2 border-b border-cream-200 pb-2">
+            <Users className="w-5 h-5 text-rose-400" />
+            <h3 className="font-serif text-sm font-bold text-slate-800">
+              {language === "hi" ? "उपयोगकर्ता प्रोफ़ाइल विवरण" :
+               language === "gu" ? "વપરાશકર્તા પ્રોફાઇલ વિગતો" :
+               "User Profile Demographics"}
+            </h3>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 bg-cream-50/30 p-4 rounded-2xl border border-cream-100/60">
+            {/* Avatar & Photo Picker */}
+            <div className="flex flex-col items-center space-y-2 shrink-0">
+              {profile.demographics.photoHex ? (
+                <img 
+                  src={profile.demographics.photoHex} 
+                  alt="User Avatar" 
+                  className="w-16 h-16 rounded-full object-cover border-2 border-rose-350 shadow-md"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-rose-50 text-rose-400 border-2 border-rose-100 flex items-center justify-center shrink-0">
+                  <Flower className="w-9 h-9" />
+                </div>
+              )}
+              
+              <label className="text-[10px] uppercase font-extrabold tracking-wider text-rose-500 hover:text-rose-600 cursor-pointer transition-colors bg-white px-2.5 py-1 rounded-full border border-rose-100 shadow-xs">
+                {language === "hi" ? "फ़ोटो बदलें" :
+                 language === "gu" ? "ફોટો બદલો" :
+                 "Change Photo"}
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      if (file.size > 2 * 1024 * 1024) {
+                        alert("Photo size must be under 2MB");
+                        return;
+                      }
+                      const reader = new FileReader();
+                      reader.onload = async () => {
+                        const hex = reader.result as string;
+                        if (!profile || !profile.demographics) return;
+                        const updatedDemo = {
+                          name: profile.demographics.name || "",
+                          city: profile.demographics.city || "",
+                          country: profile.demographics.country || "",
+                          mobile: profile.demographics.mobile || "",
+                          gender: profile.demographics.gender || "",
+                          dob: profile.demographics.dob || "",
+                          photoHex: hex
+                        };
+                        const updatedProf: UserProfile = {
+                          ...profile,
+                          demographics: updatedDemo,
+                          photoHex: hex
+                        };
+                        
+                        try {
+                          await saveProfile(uid, updatedProf, userEmail);
+                          localStorage.setItem(`aeva_profile_${uid}`, JSON.stringify(updatedProf));
+                          localStorage.setItem(`aeva_demographics_${uid}`, JSON.stringify(updatedDemo));
+                          onProfileUpdate(updatedProf);
+                        } catch (err) {
+                          console.error("Failed to update profile pic:", err);
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }} 
+                  className="hidden" 
+                />
+              </label>
+            </div>
+
+            {/* Profile Fields Summary */}
+            <div className="flex-1 space-y-2.5 w-full text-center sm:text-left">
+              <div>
+                <h4 className="text-sm font-extrabold text-slate-800 leading-none">{profile.demographics.name}</h4>
+                <span className="text-[10px] text-slate-700 block font-mono mt-1">{userEmail}</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[10px] text-slate-700 font-semibold border-t border-cream-100 pt-2 text-left">
+                <div>
+                  <span className="text-[8px] text-slate-700 uppercase block leading-none">Gender</span>
+                  <span className="font-bold text-slate-800 mt-0.5 block">{profile.demographics.gender}</span>
+                </div>
+                <div>
+                  <span className="text-[8px] text-slate-700 uppercase block leading-none">Date of Birth</span>
+                  <span className="font-bold text-slate-800 mt-0.5 block">{profile.demographics.dob}</span>
+                </div>
+                <div>
+                  <span className="text-[8px] text-slate-700 uppercase block leading-none">Location</span>
+                  <span className="font-bold text-slate-800 mt-0.5 block truncate">{profile.demographics.city}, {profile.demographics.country}</span>
+                </div>
+                <div>
+                  <span className="text-[8px] text-slate-700 uppercase block leading-none">Mobile</span>
+                  <span className="font-bold text-slate-800 mt-0.5 block truncate">{profile.demographics.mobile}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Active Privacy Status */}
       <div className="bg-white p-5 rounded-3xl border border-sage-100 shadow-sm flex items-start gap-4">

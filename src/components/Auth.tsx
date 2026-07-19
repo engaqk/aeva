@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { signUp, signIn, signInWithGoogle, saveProfile, getProfile, UserProfile } from "@/lib/services";
+import { signUp, signIn, signInWithGoogle, saveProfile, getProfile, UserProfile, recordRegistration, recordLogin } from "@/lib/services";
 import { generateMasterKey, deriveKeyFromPassword, bufToHex } from "@/lib/crypto";
 import { isFirebaseConfigured } from "@/lib/firebase";
 import { Shield, Sparkles, Flower, Heart, Activity, Loader2, Lock, Check, X, ArrowLeft, ArrowRight, Users, Info } from "lucide-react";
@@ -252,7 +252,7 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
   const [usePassphrase, setUsePassphrase] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [showMockGoogle, setShowMockGoogle] = useState(false);
+
   const [mockEmail, setMockEmail] = useState("");
   const [showIntro, setShowIntro] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
@@ -293,6 +293,11 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
   const [demoMobile, setDemoMobile] = useState("");
   const [demoGender, setDemoGender] = useState("Female");
   const [demoDob, setDemoDob] = useState("");
+  const maxDobDate = (() => {
+    const today = new Date();
+    today.setFullYear(today.getFullYear() - 18);
+    return today.toISOString().split("T")[0];
+  })();
   const [demoPhotoHex, setDemoPhotoHex] = useState("");
   const [demoPhotoType, setDemoPhotoType] = useState("");
 
@@ -334,7 +339,6 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
   const handleGoogleAuth = async () => {
     setError("");
     
-    // Check if Firebase is actually configured
     if (isFirebaseConfigured) {
       setLoading(true);
       try {
@@ -345,8 +349,12 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
         setLoading(false);
       }
     } else {
-      // In local mode, show account selector modal
-      setShowMockGoogle(true);
+      // Local fallback mode: login directly with default Gmail
+      const mockEmailStr = "hasan@gmail.com";
+      const uid = "mock_google_uid_" + bufToHex(new TextEncoder().encode(mockEmailStr)).substring(0, 12);
+      const user = { uid, email: mockEmailStr };
+      localStorage.setItem("aeva_user", JSON.stringify(user));
+      await proceedGoogleAuthSuccess(user);
     }
   };
 
@@ -362,19 +370,24 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
       }
 
       const registered = await checkUserRegistered(user.uid);
+      const emailVal = user.email || "local_google_user@gmail.com";
       if (isLogin) {
         if (registered) {
-          onAuthSuccess(user.uid, user.email || "local_google_user@gmail.com");
+          await recordLogin(user.uid, emailVal);
+          onAuthSuccess(user.uid, emailVal);
         } else {
-          setError("This account is not registered. Please switch to the 'Register' tab first.");
-          localStorage.removeItem("aeva_user");
+          // Auto-redirect first-time users to registration form
+          setIsLogin(false);
+          setUserId(user.uid);
+          setUserEmailAddress(emailVal);
+          setStep(2); // Go to demographics setup
         }
       } else {
         if (registered) {
           setError("This account is already registered. Please switch to the 'Sign In' tab to log in directly.");
         } else {
           setUserId(user.uid);
-          setUserEmailAddress(user.email || "local_google_user@gmail.com");
+          setUserEmailAddress(emailVal);
           setStep(2); // Go to demographics setup
         }
       }
@@ -385,14 +398,7 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
     }
   };
 
-  const handleSelectMockGoogleEmail = async (selectedEmail: string) => {
-    setShowMockGoogle(false);
-    const uid = "mock_google_uid_" + bufToHex(new TextEncoder().encode(selectedEmail)).substring(0, 12);
-    const user = { uid, email: selectedEmail };
-    
-    localStorage.setItem("aeva_user", JSON.stringify(user));
-    await proceedGoogleAuthSuccess(user);
-  };
+
 
   const handleOnboardingSubmit = async () => {
     setLoading(true);
@@ -434,6 +440,10 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
 
       await saveProfile(userId, profile, userEmailAddress);
       
+      // Record registration and initial login events in DB
+      await recordRegistration(userId, userEmailAddress);
+      await recordLogin(userId, userEmailAddress);
+
       localStorage.setItem(`aeva_profile_${userId}`, JSON.stringify(profile));
       localStorage.setItem(`aeva_demographics_${userId}`, JSON.stringify(profile.demographics));
 
@@ -832,115 +842,9 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
         </div>
       )}
 
-      {/* Mock Google Account Chooser Modal */}
-      {showMockGoogle && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-[390px] rounded-[36px] p-6 shadow-2xl space-y-5 border border-cream-200 animate-scale-up text-left">
-            <div className="text-center space-y-1.5 pb-2 border-b border-cream-100">
-              {/* Google logo colored */}
-              <div className="flex justify-center gap-0.5 text-xl font-bold font-sans">
-                <span className="text-blue-500 font-extrabold text-[22px]">G</span>
-                <span className="text-red-500 font-extrabold text-[22px]">o</span>
-                <span className="text-yellow-500 font-extrabold text-[22px]">o</span>
-                <span className="text-blue-500 font-extrabold text-[22px]">g</span>
-                <span className="text-green-500 font-extrabold text-[22px]">l</span>
-                <span className="text-red-500 font-extrabold text-[22px]">e</span>
-              </div>
-              <h3 className="font-semibold text-sm text-slate-800 text-center">Choose an account</h3>
-              <p className="text-xs text-slate-700 text-center">to continue to <strong className="text-rose-400">Aeva</strong></p>
-            </div>
+      
 
-            {/* Account List */}
-            <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-              {[
-                { name: "Hasan", email: "hasan@gmail.com", avatar: "H" },
-                { name: "Sarah", email: "sarah@gmail.com", avatar: "S" },
-                { name: "Test User", email: "test@gmail.com", avatar: "T" },
-                { name: "Aeva Demo", email: "aeva.demo@gmail.com", avatar: "A" }
-              ].map((acc, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  onClick={() => handleSelectMockGoogleEmail(acc.email)}
-                  className="w-full flex items-center gap-3 p-3 hover:bg-cream-50 rounded-2xl border border-cream-100/60 transition-all text-left cursor-pointer active:scale-[0.99] group"
-                >
-                  <div className="w-9 h-9 rounded-full bg-rose-100 text-rose-500 font-bold flex items-center justify-center text-sm shadow-inner group-hover:bg-rose-200 transition-colors">
-                    {acc.avatar}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-slate-800 truncate">{acc.name}</p>
-                    <p className="text-[10px] text-slate-700 truncate">{acc.email}</p>
-                  </div>
-                  <span className="text-[9px] font-bold text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity">Select</span>
-                </button>
-              ))}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowMockGoogle(false)}
-              className="w-full py-3 bg-cream-200 hover:bg-cream-300 text-slate-800 text-xs font-semibold rounded-2xl transition-colors focus:outline-none cursor-pointer text-center"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Mock Google Account Chooser Modal */}
-      {showMockGoogle && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-[380px] rounded-[32px] p-6 shadow-2xl space-y-5 border border-cream-200 animate-scale-up text-left">
-            <div className="text-center space-y-1.5">
-              {/* Google logo colored */}
-              <div className="flex justify-center gap-0.5 text-lg font-bold font-sans">
-                <span className="text-blue-500 font-extrabold">G</span>
-                <span className="text-red-500 font-extrabold">o</span>
-                <span className="text-yellow-500 font-extrabold">o</span>
-                <span className="text-blue-500 font-extrabold">g</span>
-                <span className="text-green-500 font-extrabold">l</span>
-                <span className="text-red-500 font-extrabold">e</span>
-              </div>
-              <h3 className="font-semibold text-sm text-slate-800 text-center">Sign in with Google</h3>
-              <p className="text-[10px] text-slate-700 text-center">to continue to <strong className="text-rose-400">Aeva</strong></p>
-            </div>
-
-            <div className="space-y-4">
-              <span className="text-[9px] uppercase tracking-wider font-bold text-slate-705 block text-center">Enter your Google Account email</span>
-              <div className="flex flex-col gap-2.5">
-                <input
-                  type="email"
-                  value={mockEmail}
-                  onChange={(e) => setMockEmail(e.target.value)}
-                  placeholder="name@gmail.com"
-                  className="w-full px-3.5 py-3 bg-cream-100/50 border border-cream-200 rounded-xl text-xs focus:border-rose-300 focus:outline-none text-slate-800"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (mockEmail.includes("@")) {
-                      handleSelectMockGoogleEmail(mockEmail.trim());
-                    } else {
-                      alert("Please enter a valid email address.");
-                    }
-                  }}
-                  className="w-full py-3 bg-rose-400 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-colors focus:outline-none cursor-pointer text-center"
-                >
-                  Continue
-                </button>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowMockGoogle(false)}
-              className="w-full py-2.5 bg-cream-200 hover:bg-cream-300 text-slate-800 text-xs font-semibold rounded-xl transition-colors focus:outline-none cursor-pointer"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
+      
 
       {step === 2 && (
         <div className="space-y-6 text-left animate-fade-in">
@@ -986,6 +890,16 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
             </div>
 
             <div className="grid grid-cols-2 gap-3.5">
+              <div className="space-y-1 col-span-2">
+                <label className="text-[9px] uppercase tracking-wider font-bold text-slate-700">Verified Email (Google)</label>
+                <input
+                  type="email"
+                  readOnly
+                  value={userEmailAddress}
+                  className="w-full px-3.5 py-3 bg-cream-100/30 border border-cream-200 rounded-2xl text-xs text-slate-500 focus:outline-none cursor-not-allowed font-semibold"
+                />
+              </div>
+
               <div className="space-y-1 col-span-2">
                 <label className="text-[9px] uppercase tracking-wider font-bold text-slate-700">Name</label>
                 <input
@@ -1054,6 +968,7 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
                   type="date"
                   required
                   value={demoDob}
+                  max={maxDobDate}
                   onChange={(e) => setDemoDob(e.target.value)}
                   className="w-full px-3.5 py-3 bg-cream-100/50 border border-cream-200 rounded-2xl text-xs focus:border-rose-300 focus:outline-none text-slate-800"
                 />
@@ -1061,10 +976,25 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
             </div>
           </div>
 
+          {error && (
+            <div className="p-3 bg-rose-50 border border-rose-200 text-xs text-rose-600 rounded-2xl text-center mb-2.5">
+              {error}
+            </div>
+          )}
+
           <button
             type="button"
             disabled={!demoName || !demoCity || !demoCountry || !demoMobile || !demoDob}
-            onClick={() => setStep(3)}
+            onClick={() => {
+              const selectedYear = new Date(demoDob).getFullYear();
+              const currentYear = new Date().getFullYear();
+              if (currentYear - selectedYear < 18) {
+                setError("You must be 18 years or older to register.");
+                return;
+              }
+              setError("");
+              setStep(3);
+            }}
             className="w-full py-3.5 bg-rose-400 hover:bg-rose-500 disabled:bg-slate-350 text-white rounded-2xl font-bold text-sm transition-colors shadow-md cursor-pointer text-center"
           >
             {language === "hi" ? "जारी रखें" :

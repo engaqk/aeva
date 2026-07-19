@@ -340,6 +340,8 @@ export default function Home() {
                 <PrivacyVault 
                   uid={user.uid} 
                   userEmail={user.email || "local_user"} 
+                  profile={profile}
+                  onProfileUpdate={handleProfileUpdate}
                   onLogout={handleLogout} 
                   language={language}
                 />
