@@ -2,7 +2,7 @@ const nodemailer = require("nodemailer");
 
 // Check credentials
 const gmailUser = "aeva.nine@gmail.com";
-const gmailPassword = process.env.GMAIL_APP_PASSWORD || "!@#Aeva";
+const gmailPassword = process.env.GMAIL_APP_PASSWORD || "vnyjgqjttrdsrkuj";
 
 const recipient = process.argv[2] || "recipient@example.com";
 

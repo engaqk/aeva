@@ -435,6 +435,91 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
       await recordRegistration(userId, userEmailAddress);
       await recordLogin(userId, userEmailAddress);
 
+      // Dispatch welcome email asynchronously
+      fetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+          to: userEmailAddress,
+          subject: `Welcome, ${profile.demographics?.name || "there"}! Your Personalized Aeva Sync is Activated 🌸`,
+          html: `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #f2e9e1; border-radius: 24px; background-color: #fdfbf8; color: #334155;">
+              <div style="background-color: #f7ebec; padding: 30px; text-align: center; border-radius: 20px 20px 0 0; border-bottom: 1px solid #f1d7d9;">
+                <h1 style="color: #ca7d84; font-family: Georgia, serif; font-size: 28px; margin: 0; font-weight: 800; letter-spacing: 0.5px;">Aeva</h1>
+                <span style="display: inline-block; font-size: 9px; font-weight: 850; text-transform: uppercase; background-color: #ca7d84; color: #fff; padding: 4px 10px; border-radius: 8px; margin-top: 10px; letter-spacing: 1px;">Personalized Vault Active</span>
+              </div>
+              
+              <div style="padding: 30px 15px 15px 15px; text-align: left;">
+                <h2 style="font-family: Georgia, serif; font-size: 20px; font-weight: 700; color: #1f2937; margin: 0 0 16px 0;">Hello, ${profile.demographics?.name || "there"}!</h2>
+                
+                <p style="font-size: 14px; line-height: 1.6; color: #4b5563; margin-bottom: 20px;">
+                  We are absolutely thrilled to welcome you to the Aeva ecosystem all the way from <strong>${profile.demographics?.country || "your location"}</strong>. Your health journey is completely unique, and we are committed to providing you with the personal care, safety, and insight you deserve.
+                </p>
+
+                <!-- Personal Sync Details Card -->
+                <div style="background-color: #fcfaf6; border: 1px solid #efe5db; border-radius: 16px; padding: 20px; margin-bottom: 25px;">
+                  <h3 style="font-size: 11px; text-transform: uppercase; tracking-wider; margin: 0 0 12px 0; color: #8c7355; font-weight: 800;">Your Customized Sync Profile</h3>
+                  <table style="width: 100%; font-size: 12.5px; border-collapse: collapse; color: #4b5563;">
+                    <tr style="border-bottom: 1px solid #f4e9de;">
+                      <td style="padding: 8px 0; font-weight: 650; width: 40%;">Companion Name</td>
+                      <td style="padding: 8px 0; color: #1f2937; font-weight: 700;">${profile.demographics?.name || "Verified Companion"}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f4e9de;">
+                      <td style="padding: 8px 0; font-weight: 650;">Synchronization Mode</td>
+                      <td style="padding: 8px 0; color: #ca7d84; font-weight: 700;">
+                        ${profile.mode === "cycle_sync" ? "Menstrual Cycle Syncing" : profile.mode === "menopause" ? "Perimenopause & Menopause Care" : "Hormonal Screening & Triage"}
+                      </td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f4e9de;">
+                      <td style="padding: 8px 0; font-weight: 650;">Home Region</td>
+                      <td style="padding: 8px 0; color: #1f2937; font-weight: 700;">${profile.demographics?.country || "Not specified"}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 8px 0; font-weight: 650;">Secure Sync ID</td>
+                      <td style="padding: 8px 0; color: #4b5563; font-family: monospace; font-size: 11px;">${userId.substring(0, 16)}...</td>
+                    </tr>
+                  </table>
+                </div>
+
+                <p style="font-size: 14px; line-height: 1.6; color: #4b5563; margin-bottom: 20px;">
+                  ${
+                    profile.mode === "cycle_sync" 
+                      ? "Your sync is configured to optimize your workout pacing, metabolic intake, and focus levels according to estrogen and progesterone fluctuations."
+                      : profile.mode === "menopause"
+                        ? "Your program is tailored for symptom comfort, dynamic sleep quality analysis, and tracking natural hormonal cycles with deep security."
+                        : "You are enrolled in our diagnostic screening track, allowing you to build doctor-ready export PDF logs to optimize medical consultations."
+                  }
+                </p>
+
+                <!-- Security Assurance -->
+                <div style="background-color: #f4f6f2; border: 1px solid #e1e7dd; border-radius: 16px; padding: 18px; font-size: 12.5px; color: #5f745c; line-height: 1.6; margin-bottom: 25px;">
+                  <strong style="color: #4e614b;">🛡️ Confidentiality & Client-Side Encryption:</strong><br/>
+                  ${profile.demographics?.name || "Companion"}, your records are encrypted with local AES-GCM-256 keys on your device. Only you possess the master key to decrypt these files; neither Aeva administrators nor third-party platforms can read your daily check-ins.
+                </div>
+
+                <p style="font-size: 13.5px; line-height: 1.6; color: #4b5563; margin-bottom: 15px;">
+                  <strong>Quick Actions to Begin:</strong>
+                </p>
+                <ul style="font-size: 13px; color: #4b5563; line-height: 1.7; padding-left: 20px; margin-bottom: 25px;">
+                  <li>Log daily in the app to feed your customized AI prediction engine.</li>
+                  <li>Download and backup your Master Recovery Key inside the <strong>Privacy Vault</strong>.</li>
+                  <li>Use the new <strong>Customer Support Chat</strong> bubble in the bottom right corner of the dashboard to talk to our administrative helpdesk directly.</li>
+                </ul>
+
+                <p style="font-size: 13.5px; line-height: 1.6; color: #4b5563; margin-bottom: 0;">
+                  With absolute care and respect for your biology,<br/>
+                  <strong>The Aeva Bio-Sync Team</strong>
+                </p>
+              </div>
+
+              <div style="border-top: 1px solid #efe4d2; padding-top: 15px; text-align: center; font-size: 10px; color: #9ca3af; margin-top: 30px;">
+                Aeva Inc. — Client-Side Encrypted FemTech Sync • 100% Zero-Knowledge Privacy Architecture
+              </div>
+            </div>
+          `
+        })
+      }).catch((e) => console.warn("Failed to dispatch onboarding email:", e));
+
       localStorage.setItem(`aeva_profile_${userId}`, JSON.stringify(profile));
       localStorage.setItem(`aeva_demographics_${userId}`, JSON.stringify(profile.demographics));
 

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { subscribeAuth, signOut, signIn } from "@/lib/services";
+import { subscribeAdminAuth, signOutAdmin, signInAdmin } from "@/lib/services";
 import { deriveKeyFromPassword, bufToHex } from "@/lib/crypto";
 import AdminPanel from "@/components/AdminPanel";
 import { Loader2, ArrowLeft, ShieldAlert, LogOut, Lock, Check, Globe } from "lucide-react";
@@ -145,7 +145,7 @@ export default function AdminRoute() {
       });
     }, 2500);
 
-    const unsubscribe = subscribeAuth((currUser) => {
+    const unsubscribe = subscribeAdminAuth((currUser) => {
       clearTimeout(timeoutId);
       setUser(currUser);
       setAuthChecking(false);
@@ -174,7 +174,7 @@ export default function AdminRoute() {
     setLoading(true);
 
     try {
-      const result = await signIn(adminEmail, adminPassword);
+      const result = await signInAdmin(adminEmail, adminPassword);
       
       // Verify if the logged in user is admin
       const isUserAdmin = !!(result.email && (result.email.toLowerCase().includes("admin") || result.email.toLowerCase() === "admin@aeva.com"));
@@ -198,7 +198,7 @@ export default function AdminRoute() {
   const handleLogout = async () => {
     setLoading(true);
     try {
-      await signOut();
+      await signOutAdmin();
       setUser(null);
       setAdminEmail("");
       setAdminPassword("");

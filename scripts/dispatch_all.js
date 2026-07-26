@@ -33,7 +33,7 @@ try {
 }
 
 const gmailUser = "aeva.nine@gmail.com";
-const gmailPassword = process.env.GMAIL_APP_PASSWORD || "!@#Aeva";
+const gmailPassword = process.env.GMAIL_APP_PASSWORD || "vnyjgqjttrdsrkuj";
 
 const transporter = nodemailer.createTransport({
   service: "gmail",

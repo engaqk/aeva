@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { subscribeAuth, getProfile, UserProfile, signOut } from "@/lib/services";
+import { subscribeAuth, getProfile, UserProfile, signOut, sendChatMessage, getChatMessages, ChatMessage } from "@/lib/services";
 import Auth from "@/components/Auth";
 import Dashboard from "@/components/Dashboard";
 import SymptomLog from "@/components/SymptomLog";
@@ -9,7 +9,7 @@ import AIClinic from "@/components/AIClinic";
 import PrivacyVault from "@/components/PrivacyVault";
 import DevicesPanel from "@/components/DevicesPanel";
 import SocialCircle from "@/components/SocialCircle";
-import { Heart, ClipboardList, Sparkles, Shield, Loader2, Users, Globe, LogOut } from "lucide-react";
+import { Heart, ClipboardList, Sparkles, Shield, Loader2, Users, Globe, LogOut, MessageSquare, Send } from "lucide-react";
 import { TRANSLATIONS, LanguageCode } from "@/lib/translations";
 
 type TabType = "dashboard" | "symptom_log" | "ai_clinic" | "privacy_vault" | "social_circle" | "devices";
@@ -21,6 +21,55 @@ export default function Home() {
   const [authChecking, setAuthChecking] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
   const [language, setLanguage] = useState<LanguageCode>("en");
+
+  // Support Chat States
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chats, setChats] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatSending, setChatSending] = useState(false);
+  const chatEndRef = React.useRef<HTMLDivElement | null>(null);
+
+  // Load and poll support chat messages when drawer is open
+  useEffect(() => {
+    if (!user || !isChatOpen) return;
+    
+    const fetchChats = async () => {
+      try {
+        const msgs = await getChatMessages(user.uid);
+        setChats(msgs);
+      } catch (e) {
+        console.warn(e);
+      }
+    };
+
+    fetchChats();
+    const interval = setInterval(fetchChats, 4000);
+    return () => clearInterval(interval);
+  }, [user, isChatOpen]);
+
+  // Scroll to bottom of chat
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [chats]);
+
+  const handleSendChat = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !chatInput.trim() || chatSending) return;
+
+    setChatSending(true);
+    try {
+      const email = user.email || `${user.uid.substring(0, 8)}@aeva.com`;
+      const sent = await sendChatMessage(user.uid, "user", chatInput.trim(), email);
+      setChats((prev) => [...prev, sent]);
+      setChatInput("");
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setChatSending(false);
+    }
+  };
 
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
@@ -139,7 +188,6 @@ export default function Home() {
     const unsubscribe = subscribeAuth(async (currUser) => {
       clearTimeout(timeoutId);
       setUser(currUser);
-      setAuthChecking(false);
       
       if (currUser) {
         // Auto-heal master key if missing from localStorage on refresh
@@ -169,9 +217,11 @@ export default function Home() {
           console.error("Error loading user profile:", err);
         } finally {
           setProfileLoading(false);
+          setAuthChecking(false);
         }
       } else {
         setProfile(null);
+        setAuthChecking(false);
       }
     });
 
@@ -425,6 +475,79 @@ export default function Home() {
                 );
               })}
             </div>
+
+            {/* Support Chat Floating Button */}
+            <button
+              onClick={() => setIsChatOpen(!isChatOpen)}
+              className="fixed bottom-24 right-6 bg-rose-400 hover:bg-rose-500 text-white p-3.5 rounded-full shadow-lg z-[150] transition-transform hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center border border-rose-300"
+              title="Help & Chat with Admin"
+            >
+              <MessageSquare className="w-5.5 h-5.5" />
+            </button>
+
+            {/* Chat Drawer Overlay */}
+            {isChatOpen && (
+              <div className="fixed bottom-38 right-6 w-80 h-96 bg-white/95 backdrop-blur-md rounded-3xl border border-rose-100 shadow-2xl z-[150] flex flex-col overflow-hidden animate-scale-up text-left">
+                {/* Header */}
+                <div className="bg-rose-450 text-white p-4.5 flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">💬</span>
+                    <div>
+                      <h4 className="text-xs font-bold font-serif leading-none">Aeva Support</h4>
+                      <span className="text-[9px] text-rose-100 font-bold block mt-1">Chatting with Admin</span>
+                    </div>
+                  </div>
+                  <button onClick={() => setIsChatOpen(false)} className="text-white/80 hover:text-white font-bold text-xs p-1 cursor-pointer">✕</button>
+                </div>
+
+                {/* Messages Timeline */}
+                <div className="flex-1 p-3 overflow-y-auto space-y-2 bg-cream-50/20 text-xs scrollbar-none">
+                  {chats.length === 0 ? (
+                    <div className="text-center py-16 text-slate-700 font-medium px-4">
+                      <span className="text-2xl block mb-2">👋</span>
+                      Need help? Ask us anything! Your conversation with Admin is fully secure.
+                    </div>
+                  ) : (
+                    chats.map((c, i) => {
+                      const isAdmin = c.sender === "admin";
+                      return (
+                        <div key={i} className={`flex ${isAdmin ? "justify-start" : "justify-end"}`}>
+                          <div className={`max-w-[78%] p-2.5 rounded-2xl leading-relaxed ${
+                            isAdmin 
+                              ? "bg-white border border-cream-200 text-slate-800 rounded-tl-none" 
+                              : "bg-rose-450 text-white rounded-tr-none shadow-xs"
+                          }`}>
+                            <p className="m-0 text-[11px] font-medium leading-normal">{c.message}</p>
+                            <span style={{ fontSize: '7.5px' }} className={`block mt-1 text-right ${isAdmin ? "text-slate-500" : "text-rose-100"}`}>
+                              {new Date(c.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                  <div ref={chatEndRef} />
+                </div>
+
+                {/* Form Input */}
+                <form onSubmit={handleSendChat} className="p-2 border-t border-cream-200/50 bg-white flex gap-1.5 shrink-0">
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    placeholder="Type a message..."
+                    className="flex-1 bg-cream-100/50 border border-cream-200/45 px-3.5 py-2 rounded-xl text-xs focus:outline-none focus:border-rose-300 text-slate-850"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!chatInput.trim() || chatSending}
+                    className="bg-rose-450 hover:bg-rose-500 disabled:bg-rose-350 text-white p-2 rounded-xl transition-all active:scale-95 cursor-pointer shrink-0 flex items-center justify-center"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                  </button>
+                </form>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -11,7 +11,7 @@ export async function POST(request: Request) {
 
     const gmailUser = "aeva.nine@gmail.com";
     // Check if App Password is set in environment, otherwise fall back to raw password
-    const gmailPassword = process.env.GMAIL_APP_PASSWORD || "!@#Aeva";
+    const gmailPassword = process.env.GMAIL_APP_PASSWORD || "vnyjgqjttrdsrkuj";
 
     const transporter = nodemailer.createTransport({
       service: "gmail",
