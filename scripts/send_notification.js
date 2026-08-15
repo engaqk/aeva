@@ -161,7 +161,7 @@ const emailHtml = `
     <div class="container">
       
       <div class="header">
-        <h1 class="logo">Aeva</h1>
+        <a href="https://aeva-nine.vercel.app" style="text-decoration: none;"><h1 class="logo">Aeva</h1></a>
         <div class="badge">Weekly Sync Report</div>
       </div>
       
@@ -207,7 +207,7 @@ const emailHtml = `
       </div>
       
       <div class="footer">
-        <p>Aeva Inc. — Client-Side Encrypted FemTech Sync</p>
+        <p><a href="https://aeva-nine.vercel.app" style="color: #718096; text-decoration: none;">Aeva Inc. — Client-Side Encrypted FemTech Sync</a></p>
         <p style="font-size: 9px; margin-top: 5px;">You received this email because you enabled local syncing in Aeva Privacy Settings.</p>
       </div>
       
