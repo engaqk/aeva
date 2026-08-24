@@ -1,4 +1,4 @@
-const CACHE_NAME = "aeva-cache-v3";
+const CACHE_NAME = "aeva-cache-v4";
 const ASSETS_TO_CACHE = [
   "/",
   "/manifest.json",
