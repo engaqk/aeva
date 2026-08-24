@@ -64,7 +64,7 @@ export default function AdminPanel() {
   const [seedSuccess, setSeedSuccess] = useState(false);
 
   // Dispatcher States
-  const [activeTab, setActiveTab] = useState<"users" | "dispatcher" | "audit" | "chats">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "dispatcher" | "audit" | "chats" | "photos">("users");
   const [registrationLogs, setRegistrationLogs] = useState<RegistrationRecord[]>([]);
   const [loginLogs, setLoginLogs] = useState<LoginRecord[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityRecord[]>([]);
@@ -172,6 +172,40 @@ export default function AdminPanel() {
     }
     loadSelectedUserLogs();
   }, [selectedUser]);
+
+  const handleApprovePhoto = async (user: AdminUserRecord) => {
+    if (!user.profile?.pendingPhotoHex) return;
+    try {
+      const updatedProfile = {
+        ...user.profile,
+        photoHex: user.profile.pendingPhotoHex,
+        pendingPhotoHex: "",
+        photoStatus: "approved" as const
+      };
+      if (updatedProfile.demographics) {
+        updatedProfile.demographics.photoHex = user.profile.pendingPhotoHex;
+      }
+      await saveProfile(user.uid, updatedProfile, user.email);
+      await loadAdminData(); // Refresh UI
+    } catch (e) {
+      console.error("Failed to approve photo:", e);
+    }
+  };
+
+  const handleRejectPhoto = async (user: AdminUserRecord) => {
+    if (!user.profile) return;
+    try {
+      const updatedProfile = {
+        ...user.profile,
+        pendingPhotoHex: "",
+        photoStatus: "rejected" as const
+      };
+      await saveProfile(user.uid, updatedProfile, user.email);
+      await loadAdminData(); // Refresh UI
+    } catch (e) {
+      console.error("Failed to reject photo:", e);
+    }
+  };
 
   const handleSeedDemoData = async () => {
     setSeeding(true);
@@ -434,6 +468,23 @@ export default function AdminPanel() {
         >
           <MessageSquare className="w-4 h-4" />
           <span>User Help Chats</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("photos")}
+          className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            activeTab === "photos"
+              ? "bg-white text-rose-500 shadow-sm border border-rose-100"
+              : "text-slate-700 hover:text-slate-800"
+          }`}
+        >
+          <UserCheck className="w-4 h-4" />
+          <span>Photos</span>
+          {users.filter(u => u.profile?.photoStatus === "pending" && u.profile?.pendingPhotoHex).length > 0 && (
+            <span className="bg-orange-500 text-white text-[9px] px-1.5 rounded-full font-bold ml-1">
+              {users.filter(u => u.profile?.photoStatus === "pending" && u.profile?.pendingPhotoHex).length}
+            </span>
+          )}
         </button>
       </div>
 
@@ -1229,6 +1280,64 @@ export default function AdminPanel() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "photos" && (
+        <div className="animate-fade-in space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-serif font-bold text-slate-800 flex items-center gap-2">
+                <UserCheck className="w-5 h-5 text-rose-500" />
+                Photo Approvals
+              </h2>
+              <p className="text-xs font-medium text-slate-500 mt-1">
+                Review and approve uploaded profile pictures.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {users.filter(u => u.profile?.photoStatus === "pending" && u.profile?.pendingPhotoHex).length === 0 ? (
+              <div className="col-span-full py-12 flex flex-col items-center justify-center bg-white rounded-3xl border border-cream-200">
+                <Check className="w-12 h-12 text-emerald-400 mb-3" />
+                <h3 className="text-sm font-bold text-slate-800">All Caught Up!</h3>
+                <p className="text-xs text-slate-500 mt-1">No pending photos to review.</p>
+              </div>
+            ) : (
+              users.filter(u => u.profile?.photoStatus === "pending" && u.profile?.pendingPhotoHex).map(user => (
+                <div key={user.uid} className="bg-white rounded-3xl p-5 border border-cream-200 shadow-sm flex flex-col items-center">
+                  <div className="w-24 h-24 rounded-full overflow-hidden mb-4 border-4 border-orange-100 shadow-md">
+                    <img 
+                      src={user.profile!.pendingPhotoHex} 
+                      alt="Pending" 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <h3 className="text-sm font-bold text-slate-800 truncate w-full text-center">
+                    {user.profile?.demographics?.name || "Unknown User"}
+                  </h3>
+                  <span className="text-[10px] text-slate-500 block mb-4 truncate w-full text-center">
+                    {user.email}
+                  </span>
+                  <div className="flex gap-2 w-full mt-auto">
+                    <button 
+                      onClick={() => handleRejectPhoto(user)}
+                      className="flex-1 bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-600 px-3 py-2 rounded-xl text-xs font-bold transition-colors border border-transparent hover:border-rose-200 cursor-pointer"
+                    >
+                      Reject
+                    </button>
+                    <button 
+                      onClick={() => handleApprovePhoto(user)}
+                      className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-sm"
+                    >
+                      Approve
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}

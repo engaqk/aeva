@@ -1,4 +1,4 @@
-import { auth, adminAuth, db, adminDb, isFirebaseConfigured } from "./firebase";
+﻿import { auth, adminAuth, db, adminDb, isFirebaseConfigured } from "./firebase";
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
@@ -49,6 +49,8 @@ export interface UserProfile {
   lastPeriodStart?: string; // YYYY-MM-DD
   encryptedMedicalMetadata?: string;
   photoHex?: string;
+  pendingPhotoHex?: string;
+  photoStatus?: "approved" | "pending" | "rejected";
   photoType?: string;
   demographics?: {
     name: string;
@@ -58,6 +60,8 @@ export interface UserProfile {
     gender: string;
     dob: string;
     photoHex?: string;
+  pendingPhotoHex?: string;
+  photoStatus?: "approved" | "pending" | "rejected";
     photoType?: string;
   };
   demographicsFilled?: boolean;
@@ -604,6 +608,8 @@ export interface SocialPost {
   userMode: string;
   content: string;
   photoHex?: string;
+  pendingPhotoHex?: string;
+  photoStatus?: "approved" | "pending" | "rejected";
   photoType?: string;
   likes: number;
   hugs: number;
@@ -708,7 +714,7 @@ function getLocalPosts(userMode: string): SocialPost[] {
         uid: "mock_user_sarah",
         username: "sarah",
         userMode: "cycle_sync",
-        content: "Feeling incredible energy today in my follicular phase! Just crushed a high-intensity strength workout. Anyone else peak-training today? 💪🌸",
+        content: "Feeling incredible energy today in my follicular phase! Just crushed a high-intensity strength workout. Anyone else peak-training today? ðŸ’ªðŸŒ¸",
         likes: 12,
         hugs: 4,
         timestamp: new Date(Date.now() - 3600000).toISOString()
@@ -718,7 +724,7 @@ function getLocalPosts(userMode: string): SocialPost[] {
         uid: "mock_user_chloe",
         username: "chloe",
         userMode: "cycle_sync",
-        content: "Slow morning today in luteal phase, brewing some raspberry leaf tea. Remember to stretch and be kind to yourselves ladies! ☕️🧘‍♀️",
+        content: "Slow morning today in luteal phase, brewing some raspberry leaf tea. Remember to stretch and be kind to yourselves ladies! â˜•ï¸ðŸ§˜â€â™€ï¸",
         likes: 8,
         hugs: 9,
         timestamp: new Date(Date.now() - 7200000).toISOString()
@@ -728,7 +734,7 @@ function getLocalPosts(userMode: string): SocialPost[] {
         uid: "mock_user_elena",
         username: "elena",
         userMode: "menopause",
-        content: "Just tried deep diaphragmatic breathing for my afternoon hot flashes and it reduced the intensity by half! Highly recommend trying it. 🌬️💚",
+        content: "Just tried deep diaphragmatic breathing for my afternoon hot flashes and it reduced the intensity by half! Highly recommend trying it. ðŸŒ¬ï¸ðŸ’š",
         likes: 15,
         hugs: 11,
         timestamp: new Date(Date.now() - 1800000).toISOString()
@@ -1011,4 +1017,5 @@ export async function getActivityLogs(): Promise<ActivityRecord[]> {
   const list = JSON.parse(localStorage.getItem('aeva_activities') || '[]') as ActivityRecord[];
   return list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 }
+
 

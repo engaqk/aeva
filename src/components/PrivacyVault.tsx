@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { generateMasterKey, deriveKeyFromPassword, bufToHex } from "@/lib/crypto";
 import { Shield, Key, Eye, EyeOff, Copy, Check, Upload, AlertTriangle, RefreshCw, LogOut, Users, Sparkles, X, Flower, Edit2, Save } from "lucide-react";
-import { signOut, saveProfile, UserProfile } from "@/lib/services";
+import { signOut, saveProfile, recordActivity, UserProfile } from "@/lib/services";
 import { TRANSLATIONS, LanguageCode } from "@/lib/translations";
 
 interface PrivacyVaultProps {
@@ -191,7 +191,18 @@ export default function PrivacyVault({ uid, userEmail, profile, onProfileUpdate,
           <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 bg-cream-50/30 p-4 rounded-2xl border border-cream-100/60">
             {/* Avatar & Photo Picker */}
             <div className="flex flex-col items-center space-y-2 shrink-0">
-              {profile.demographics.photoHex ? (
+              {profile.photoStatus === "pending" && profile.pendingPhotoHex ? (
+                <div className="relative group w-16 h-16 rounded-full overflow-hidden border-2 border-orange-300 shadow-md">
+                  <img 
+                    src={profile.pendingPhotoHex} 
+                    alt="Pending Avatar" 
+                    className="w-full h-full object-cover opacity-50 blur-[2px]"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <AlertTriangle className="w-6 h-6 text-orange-500 drop-shadow-md" />
+                  </div>
+                </div>
+              ) : profile.demographics.photoHex ? (
                 <img 
                   src={profile.demographics.photoHex} 
                   alt="User Avatar" 
@@ -240,18 +251,23 @@ export default function PrivacyVault({ uid, userEmail, profile, onProfileUpdate,
                           mobile: profile.demographics.mobile || "",
                           gender: profile.demographics.gender || "",
                           dob: profile.demographics.dob || "",
-                          photoHex: hex
+                          photoHex: profile.demographics.photoHex // Keep existing
                         };
                         const updatedProf: UserProfile = {
                           ...profile,
                           demographics: updatedDemo,
-                          photoHex: hex
+                          pendingPhotoHex: hex,
+                          photoStatus: "pending"
                         };
                         
                         try {
                           await saveProfile(uid, updatedProf, userEmail);
                           localStorage.setItem(`aeva_profile_${uid}`, JSON.stringify(updatedProf));
                           localStorage.setItem(`aeva_demographics_${uid}`, JSON.stringify(updatedDemo));
+                          
+                          // Log activity to notify admin
+                          await recordActivity("photo_uploaded_for_verification", uid, userEmail);
+                          
                           onProfileUpdate(updatedProf);
                         } catch (err) {
                           console.error("Failed to update profile pic:", err);
@@ -263,7 +279,12 @@ export default function PrivacyVault({ uid, userEmail, profile, onProfileUpdate,
                   className="hidden" 
                 />
               </label>
-              {!profile.demographics.photoHex && (
+              {profile.photoStatus === "pending" ? (
+                <span className="text-[9px] text-orange-600 font-medium bg-orange-50 px-2 py-0.5 rounded-md mt-1 border border-orange-200 shadow-sm inline-flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span>
+                  {language === "hi" ? "सत्यापन लंबित" : language === "gu" ? "ચકાસણી બાકી છે" : "Pending Verification"}
+                </span>
+              ) : !profile.demographics.photoHex && (
                 <span className="text-[9px] text-slate-400 font-medium bg-slate-100 px-2 py-0.5 rounded-md mt-1 border border-slate-200 shadow-sm inline-flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"></span>
                   {language === "hi" ? "लंबित" : language === "gu" ? "બાકી છે" : "Pending"}
