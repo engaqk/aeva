@@ -553,7 +553,7 @@ export interface AdminUserRecord {
 
 // Fetch all registered users for Admin Dashboard
 export async function getAllUsers(): Promise<AdminUserRecord[]> {
-  if (isFirebaseConfigured && adminDb) {
+  if (isFirebaseConfigured && adminDb && adminAuth?.currentUser) {
     try {
       const usersColRef = collection(adminDb, "users");
       const querySnapshot = await withTimeout(getDocs(usersColRef), 2000);
@@ -827,7 +827,7 @@ export async function recordLogin(uid: string, email: string) {
 }
 
 export async function getRegistrationLogs(): Promise<RegistrationRecord[]> {
-  if (isFirebaseConfigured && adminDb) {
+  if (isFirebaseConfigured && adminDb && adminAuth?.currentUser) {
     try {
       const qSnap = await withTimeout(getDocs(collection(adminDb, "registrations")), 2000);
       const list: RegistrationRecord[] = [];
@@ -844,7 +844,7 @@ export async function getRegistrationLogs(): Promise<RegistrationRecord[]> {
 }
 
 export async function getLoginLogs(): Promise<LoginRecord[]> {
-  if (isFirebaseConfigured && adminDb) {
+  if (isFirebaseConfigured && adminDb && adminAuth?.currentUser) {
     try {
       const qSnap = await withTimeout(getDocs(collection(adminDb, "logins")), 2000);
       const list: LoginRecord[] = [];
@@ -888,9 +888,12 @@ export async function sendChatMessage(uid: string, sender: 'user' | 'admin', mes
     console.warn("Failed to save chat locally:", e);
   }
 
-  if (isFirebaseConfigured && db) {
+  const isCurrentlyAdmin = !!(adminAuth && adminAuth.currentUser);
+  const targetDb = isCurrentlyAdmin ? adminDb : db;
+
+  if (isFirebaseConfigured && targetDb) {
     try {
-      const chatColRef = collection(db, "users", uid, "admin_chats");
+      const chatColRef = collection(targetDb, "users", uid, "admin_chats");
       const docRef = await withTimeout(addDoc(chatColRef, msg), 2000);
       return { ...msg, id: docRef.id };
     } catch (e) {
@@ -901,9 +904,12 @@ export async function sendChatMessage(uid: string, sender: 'user' | 'admin', mes
 }
 
 export async function getChatMessages(uid: string): Promise<ChatMessage[]> {
-  if (isFirebaseConfigured && db) {
+  const isCurrentlyAdmin = !!(adminAuth && adminAuth.currentUser);
+  const targetDb = isCurrentlyAdmin ? adminDb : db;
+  
+  if (isFirebaseConfigured && targetDb) {
     try {
-      const chatColRef = collection(db, "users", uid, "admin_chats");
+      const chatColRef = collection(targetDb, "users", uid, "admin_chats");
       const q = query(chatColRef, orderBy("timestamp", "asc"));
       const snap = await withTimeout(getDocs(q), 2000);
       const list: ChatMessage[] = [];
@@ -927,7 +933,7 @@ export async function getChatMessages(uid: string): Promise<ChatMessage[]> {
 }
 
 export async function getAllChatsForAdmin(): Promise<{ uid: string; email: string; messages: ChatMessage[] }[]> {
-  if (isFirebaseConfigured && db) {
+  if (isFirebaseConfigured && adminDb && adminAuth?.currentUser) {
     try {
       const users = await getAllUsers();
       const results: { uid: string; email: string; messages: ChatMessage[] }[] = [];
@@ -990,7 +996,7 @@ export async function recordActivity(action: string, uid: string = 'guest', emai
 }
 
 export async function getActivityLogs(): Promise<ActivityRecord[]> {
-  if (isFirebaseConfigured && adminDb) {
+  if (isFirebaseConfigured && adminDb && adminAuth?.currentUser) {
     try {
       const qSnap = await withTimeout(getDocs(collection(adminDb, 'activities')), 2000);
       const list: ActivityRecord[] = [];
