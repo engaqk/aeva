@@ -1,4 +1,4 @@
-import { auth, adminAuth, db, isFirebaseConfigured } from "./firebase";
+import { auth, adminAuth, db, adminDb, isFirebaseConfigured } from "./firebase";
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
@@ -553,9 +553,9 @@ export interface AdminUserRecord {
 
 // Fetch all registered users for Admin Dashboard
 export async function getAllUsers(): Promise<AdminUserRecord[]> {
-  if (isFirebaseConfigured && db) {
+  if (isFirebaseConfigured && adminDb) {
     try {
-      const usersColRef = collection(db, "users");
+      const usersColRef = collection(adminDb, "users");
       const querySnapshot = await withTimeout(getDocs(usersColRef), 2000);
       const users: AdminUserRecord[] = [];
       
@@ -565,7 +565,7 @@ export async function getAllUsers(): Promise<AdminUserRecord[]> {
         const profile = data.profile || { mode: "cycle_sync" };
         
         // Get log count
-        const logsColRef = collection(db, "users", uid, "daily_logs");
+        const logsColRef = collection(adminDb, "users", uid, "daily_logs");
         const logsSnap = await withTimeout(getDocs(logsColRef), 1000).catch(() => ({ size: 0 }));
         
         users.push({
@@ -578,7 +578,13 @@ export async function getAllUsers(): Promise<AdminUserRecord[]> {
       return users;
     } catch (e) {
       console.warn("Error fetching all users in Admin Mode, falling back to LocalStorage:", e);
-      return [];
+      // Actual fallback logic
+      let localUsers = localStorage.getItem("aeva_admin_users");
+      if (!localUsers) {
+        localUsers = "[]";
+        localStorage.setItem("aeva_admin_users", localUsers);
+      }
+      return JSON.parse(localUsers);
     }
   } else {
     // Local Mode: Retrieve users from LocalStorage
@@ -821,9 +827,9 @@ export async function recordLogin(uid: string, email: string) {
 }
 
 export async function getRegistrationLogs(): Promise<RegistrationRecord[]> {
-  if (isFirebaseConfigured && db) {
+  if (isFirebaseConfigured && adminDb) {
     try {
-      const qSnap = await withTimeout(getDocs(collection(db, "registrations")), 2000);
+      const qSnap = await withTimeout(getDocs(collection(adminDb, "registrations")), 2000);
       const list: RegistrationRecord[] = [];
       qSnap.forEach(d => {
         list.push(d.data() as RegistrationRecord);
@@ -838,9 +844,9 @@ export async function getRegistrationLogs(): Promise<RegistrationRecord[]> {
 }
 
 export async function getLoginLogs(): Promise<LoginRecord[]> {
-  if (isFirebaseConfigured && db) {
+  if (isFirebaseConfigured && adminDb) {
     try {
-      const qSnap = await withTimeout(getDocs(collection(db, "logins")), 2000);
+      const qSnap = await withTimeout(getDocs(collection(adminDb, "logins")), 2000);
       const list: LoginRecord[] = [];
       qSnap.forEach(d => {
         list.push(d.data() as LoginRecord);
@@ -948,5 +954,55 @@ export async function getAllChatsForAdmin(): Promise<{ uid: string; email: strin
     }
   }
   return results;
+}
+
+
+
+
+
+export interface ActivityRecord {
+  uid: string;
+  email: string;
+  action: string;
+  timestamp: string;
+}
+
+export async function recordActivity(action: string, uid: string = 'guest', email: string = 'guest') {
+  const timestamp = new Date().toISOString();
+  const rec: ActivityRecord = { uid, email, action, timestamp };
+
+  try {
+    const logs = JSON.parse(localStorage.getItem('aeva_activities') || '[]');
+    logs.push(rec);
+    localStorage.setItem('aeva_activities', JSON.stringify(logs));
+  } catch (e) {
+    console.warn('Failed to save activity locally:', e);
+  }
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const actDocRef = doc(collection(db, 'activities'));
+      await withTimeout(setDoc(actDocRef, rec), 2000);
+    } catch (e) {
+      console.warn('Firestore recordActivity failed:', e);
+    }
+  }
+}
+
+export async function getActivityLogs(): Promise<ActivityRecord[]> {
+  if (isFirebaseConfigured && adminDb) {
+    try {
+      const qSnap = await withTimeout(getDocs(collection(adminDb, 'activities')), 2000);
+      const list: ActivityRecord[] = [];
+      qSnap.forEach((d) => {
+        list.push(d.data() as ActivityRecord);
+      });
+      return list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    } catch (e) {
+      console.warn('Firestore getActivityLogs failed:', e);
+    }
+  }
+  const list = JSON.parse(localStorage.getItem('aeva_activities') || '[]') as ActivityRecord[];
+  return list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 }
 

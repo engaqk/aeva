@@ -26,6 +26,7 @@ let analyticsInstance: Promise<Analytics | null> | null = null;
 
 let adminApp: FirebaseApp | null = null;
 let adminAuthInstance: Auth | null = null;
+let adminDbInstance: Firestore | null = null;
 
 if (isFirebaseConfigured) {
   try {
@@ -36,6 +37,7 @@ if (isFirebaseConfigured) {
     // Create an isolated secondary app for the admin portal so its session is kept separate from general users
     adminApp = getApps().find(a => a.name === "admin_app") || initializeApp(firebaseConfig, "admin_app");
     adminAuthInstance = getAuth(adminApp);
+    adminDbInstance = getFirestore(adminApp);
     
     if (typeof window !== "undefined") {
       analyticsInstance = isSupported().then((yes) => (yes ? getAnalytics(app!) : null)).catch(() => null);
@@ -54,4 +56,6 @@ if (isFirebaseConfigured) {
 export const auth = authInstance;
 export const adminAuth = adminAuthInstance;
 export const db = dbInstance;
+export const adminDb = adminDbInstance;
 export const analytics = analyticsInstance;
+

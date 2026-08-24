@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { subscribeAuth, getProfile, UserProfile, signOut, sendChatMessage, getChatMessages, ChatMessage } from "@/lib/services";
+import { subscribeAuth, getProfile, UserProfile, signOut, sendChatMessage, getChatMessages, ChatMessage, recordActivity } from "@/lib/services";
 import Auth from "@/components/Auth";
 import Dashboard from "@/components/Dashboard";
 import SymptomLog from "@/components/SymptomLog";
@@ -74,6 +74,10 @@ export default function Home() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+
+  useEffect(() => {
+    recordActivity('App Session Started', user?.uid || 'guest', user?.email || 'guest');
+  }, [user?.uid]);
 
   // Monitor PWA installation support
   useEffect(() => {
@@ -310,7 +314,23 @@ export default function Home() {
       {/* Premium Persistent Top Header Bar */}
       <div className="w-full h-16 bg-white/90 backdrop-blur-md border-b border-cream-200/50 flex items-center justify-between px-5 shrink-0 z-50 animate-fade-in">
         <div className="flex items-center gap-2">
-          <span className="text-xl">🌸</span>
+          {user && profile?.demographics?.photoHex ? (
+            <img 
+              src={profile.demographics.photoHex} 
+              alt="Profile" 
+              className="w-8 h-8 rounded-full object-cover border-2 border-rose-200 cursor-pointer shadow-sm hover:opacity-80 transition-opacity" 
+              onClick={() => setActiveTab('privacy_vault')}
+            />
+          ) : user ? (
+            <div 
+              className="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center text-rose-400 cursor-pointer hover:bg-rose-100 transition-colors border-2 border-rose-100" 
+              onClick={() => setActiveTab('privacy_vault')}
+            >
+              <Users className="w-4 h-4" />
+            </div>
+          ) : (
+            <span className="text-xl">🌸</span>
+          )}
           <span className="font-serif font-bold text-lg tracking-wider text-rose-500">Aeva</span>
           <span className="text-[8px] tracking-widest font-extrabold text-slate-700 bg-cream-100 px-2 py-0.5 rounded uppercase">Sync</span>
         </div>
@@ -554,3 +574,4 @@ export default function Home() {
     </div>
   );
 }
+

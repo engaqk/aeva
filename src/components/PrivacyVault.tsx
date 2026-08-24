@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { generateMasterKey, deriveKeyFromPassword, bufToHex } from "@/lib/crypto";
-import { Shield, Key, Eye, EyeOff, Copy, Check, Upload, AlertTriangle, RefreshCw, LogOut, Users, Sparkles, X, Flower } from "lucide-react";
+import { Shield, Key, Eye, EyeOff, Copy, Check, Upload, AlertTriangle, RefreshCw, LogOut, Users, Sparkles, X, Flower, Edit2, Save } from "lucide-react";
 import { signOut, saveProfile, UserProfile } from "@/lib/services";
 import { TRANSLATIONS, LanguageCode } from "@/lib/translations";
 
@@ -28,6 +28,13 @@ export default function PrivacyVault({ uid, userEmail, profile, onProfileUpdate,
   const [passphrase, setPassphrase] = useState("");
   const [keyInput, setKeyInput] = useState("");
   const [message, setMessage] = useState("");
+  
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editCity, setEditCity] = useState("");
+  const [editCountry, setEditCountry] = useState("");
+  const [editMobile, setEditMobile] = useState("");
+  const [editDob, setEditDob] = useState("");
   const [error, setError] = useState("");
 
   const [partnerLinkGenerated, setPartnerLinkGenerated] = useState(false);
@@ -247,30 +254,113 @@ export default function PrivacyVault({ uid, userEmail, profile, onProfileUpdate,
             </div>
 
             {/* Profile Fields Summary */}
-            <div className="flex-1 space-y-2.5 w-full text-center sm:text-left">
-              <div>
-                <h4 className="text-sm font-extrabold text-slate-800 leading-none">{profile.demographics.name}</h4>
-                <span className="text-[10px] text-slate-700 block font-mono mt-1">{userEmail}</span>
-              </div>
+            <div className="flex-1 space-y-2.5 w-full text-center sm:text-left relative">
+              {!isEditingProfile ? (
+                <>
+                  <button 
+                    onClick={() => {
+                      setEditName(profile.demographics?.name || "");
+                      setEditCity(profile.demographics?.city || "");
+                      setEditCountry(profile.demographics?.country || "");
+                      setEditMobile(profile.demographics?.mobile || "");
+                      setEditDob(profile.demographics?.dob || "");
+                      setIsEditingProfile(true);
+                    }}
+                    className="absolute top-0 right-0 p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors"
+                    title="Edit Profile"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  
+                  <div className="pr-8">
+                    <h4 className="text-sm font-extrabold text-slate-800 leading-none">{profile.demographics.name}</h4>
+                    <span className="text-[10px] text-slate-700 block font-mono mt-1">{userEmail}</span>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[10px] text-slate-700 font-semibold border-t border-cream-100 pt-2 text-left">
-                <div>
-                  <span className="text-[8px] text-slate-700 uppercase block leading-none">Gender</span>
-                  <span className="font-bold text-slate-800 mt-0.5 block">{profile.demographics.gender}</span>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[10px] text-slate-700 font-semibold border-t border-cream-100 pt-2 text-left">
+                    <div>
+                      <span className="text-[8px] text-slate-700 uppercase block leading-none">Gender</span>
+                      <span className="font-bold text-slate-800 mt-0.5 block">{profile.demographics.gender}</span>
+                    </div>
+                    <div>
+                      <span className="text-[8px] text-slate-700 uppercase block leading-none">Date of Birth</span>
+                      <span className="font-bold text-slate-800 mt-0.5 block">{profile.demographics.dob}</span>
+                    </div>
+                    <div>
+                      <span className="text-[8px] text-slate-700 uppercase block leading-none">Location</span>
+                      <span className="font-bold text-slate-800 mt-0.5 block truncate">{profile.demographics.city}, {profile.demographics.country}</span>
+                    </div>
+                    <div>
+                      <span className="text-[8px] text-slate-700 uppercase block leading-none">Mobile</span>
+                      <span className="font-bold text-slate-800 mt-0.5 block truncate">{profile.demographics.mobile}</span>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold uppercase text-slate-700">Edit Details</h4>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => setIsEditingProfile(false)}
+                        className="text-[10px] font-bold text-slate-500 px-2 py-1 bg-slate-100 rounded-lg hover:bg-slate-200"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        onClick={async () => {
+                          const updatedProf = {
+                            ...profile,
+                            demographics: {
+                              ...profile.demographics,
+                              name: editName,
+                              city: editCity,
+                              country: editCountry,
+                              mobile: editMobile,
+                              dob: editDob
+                            }
+                          };
+                          try {
+                            await saveProfile(uid, updatedProf as any, userEmail);
+                            localStorage.setItem(`aeva_profile_${uid}`, JSON.stringify(updatedProf));
+                            localStorage.setItem(`aeva_demographics_${uid}`, JSON.stringify(updatedProf.demographics));
+                            onProfileUpdate(updatedProf as any);
+                            setIsEditingProfile(false);
+                          } catch (err) {
+                            console.error("Failed to save profile:", err);
+                          }
+                        }}
+                        className="text-[10px] font-bold text-white px-2 py-1 bg-rose-500 rounded-lg hover:bg-rose-600 flex items-center gap-1"
+                      >
+                        <Save className="w-3 h-3" /> Save
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2 text-left">
+                    <div className="col-span-2">
+                      <label className="text-[9px] font-bold text-slate-500">Name</label>
+                      <input type="text" value={editName} onChange={e => setEditName(e.target.value)} className="w-full text-xs p-1.5 border border-cream-200 rounded-lg bg-white" />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-bold text-slate-500">Date of Birth</label>
+                      <input type="date" value={editDob} onChange={e => setEditDob(e.target.value)} className="w-full text-xs p-1.5 border border-cream-200 rounded-lg bg-white" />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-bold text-slate-500">Mobile</label>
+                      <input type="tel" value={editMobile} onChange={e => setEditMobile(e.target.value)} className="w-full text-xs p-1.5 border border-cream-200 rounded-lg bg-white" />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-bold text-slate-500">City</label>
+                      <input type="text" value={editCity} onChange={e => setEditCity(e.target.value)} className="w-full text-xs p-1.5 border border-cream-200 rounded-lg bg-white" />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-bold text-slate-500">Country</label>
+                      <input type="text" value={editCountry} onChange={e => setEditCountry(e.target.value)} className="w-full text-xs p-1.5 border border-cream-200 rounded-lg bg-white" />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-[8px] text-slate-700 uppercase block leading-none">Date of Birth</span>
-                  <span className="font-bold text-slate-800 mt-0.5 block">{profile.demographics.dob}</span>
-                </div>
-                <div>
-                  <span className="text-[8px] text-slate-700 uppercase block leading-none">Location</span>
-                  <span className="font-bold text-slate-800 mt-0.5 block truncate">{profile.demographics.city}, {profile.demographics.country}</span>
-                </div>
-                <div>
-                  <span className="text-[8px] text-slate-700 uppercase block leading-none">Mobile</span>
-                  <span className="font-bold text-slate-800 mt-0.5 block truncate">{profile.demographics.mobile}</span>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>

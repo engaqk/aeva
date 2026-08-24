@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { getAllUsers, AdminUserRecord, getRecentDailyLogs, saveProfile, saveDailyLog, getRegistrationLogs, getLoginLogs, RegistrationRecord, LoginRecord, getAllChatsForAdmin, sendChatMessage, ChatMessage } from "@/lib/services";
+import { getAllUsers, AdminUserRecord, getRecentDailyLogs, saveProfile, saveDailyLog, getRegistrationLogs, getLoginLogs, RegistrationRecord, LoginRecord, getAllChatsForAdmin, sendChatMessage, ChatMessage, getActivityLogs, ActivityRecord } from "@/lib/services";
 import { 
   Users, Clipboard, BarChart3, Search, UserCheck, Activity, Calendar, 
   ShieldAlert, Sparkles, Check, Database, RefreshCw, Mail, Send, Eye, BookOpen, AlertTriangle, X, Flower, MessageSquare, Globe
@@ -67,6 +67,7 @@ export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState<"users" | "dispatcher" | "audit" | "chats">("users");
   const [registrationLogs, setRegistrationLogs] = useState<RegistrationRecord[]>([]);
   const [loginLogs, setLoginLogs] = useState<LoginRecord[]>([]);
+  const [activityLogs, setActivityLogs] = useState<ActivityRecord[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState("luteal");
   const [recipientEmail, setRecipientEmail] = useState("");
   const [dispatchStatus, setDispatchStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
@@ -89,6 +90,8 @@ export default function AdminPanel() {
       setRegistrationLogs(regs);
       const logins = await getLoginLogs();
       setLoginLogs(logins);
+      const acts = await getActivityLogs();
+      setActivityLogs(acts);
       const threads = await getAllChatsForAdmin();
       setChatThreads(threads);
     } catch (e) {
@@ -1047,6 +1050,57 @@ export default function AdminPanel() {
                 </div>
               )}
             </div>
+
+            {/* Activity Logs — all user/guest actions with timestamps */}
+            <div className="bg-white p-5 rounded-3xl border border-cream-200/60 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-cream-200 pb-2">
+                <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <Eye className="w-4 h-4 text-amber-500" />
+                  Live Activity Stream ({activityLogs.length})
+                </h4>
+                <button
+                  onClick={loadAdminData}
+                  className="p-1.5 text-slate-500 hover:text-slate-700 transition-colors"
+                  title="Refresh"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <p className="text-[10px] text-slate-500 leading-relaxed">
+                Every page visit, login, registration, and action by any guest or logged-in user is recorded here with a precise timestamp so you can monitor app performance.
+              </p>
+
+              {activityLogs.length === 0 ? (
+                <p className="text-xs text-slate-700 italic text-center py-4">No activity recorded yet. Activity will appear here as users visit the app.</p>
+              ) : (
+                <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1 scrollbar-none">
+                  {activityLogs.map((act, idx) => {
+                    const isGuest = act.uid === "guest";
+                    return (
+                      <div key={idx} className="bg-cream-50/50 p-3 rounded-2xl border border-cream-100 flex flex-col space-y-1 text-xs">
+                        <div className="flex justify-between items-center gap-2">
+                          <span className="font-bold text-slate-850 truncate flex-1">
+                            {isGuest ? "👤 Guest" : act.email}
+                          </span>
+                          <span className={`px-2 py-0.5 text-[8px] font-bold rounded-full uppercase shrink-0 border ${
+                            isGuest
+                              ? "bg-cream-100 border-cream-200 text-slate-600"
+                              : "bg-amber-50 border-amber-100 text-amber-600"
+                          }`}>
+                            {act.action}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-[9px] text-slate-700 font-semibold">
+                          <span className="font-mono">{isGuest ? "guest" : `UID: ${act.uid.substring(0, 14)}...`}</span>
+                          <span>{new Date(act.timestamp).toLocaleString()}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -1182,3 +1236,4 @@ export default function AdminPanel() {
     </div>
   );
 }
+

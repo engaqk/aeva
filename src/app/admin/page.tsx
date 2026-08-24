@@ -174,7 +174,8 @@ export default function AdminRoute() {
     setLoading(true);
 
     try {
-      const result = await signInAdmin(adminEmail, adminPassword);
+      const emailToUse = adminEmail.includes('@') ? adminEmail : `${adminEmail}@aeva.com`;
+      const result = await signInAdmin(emailToUse, adminPassword);
       
       // Verify if the logged in user is admin
       const isUserAdmin = !!(result.email && (result.email.toLowerCase().includes("admin") || result.email.toLowerCase() === "admin@aeva.com"));

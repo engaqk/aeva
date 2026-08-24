@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { signUp, signIn, signInWithGoogle, saveProfile, getProfile, UserProfile, recordRegistration, recordLogin } from "@/lib/services";
+import { signUp, signIn, signInWithGoogle, saveProfile, getProfile, UserProfile, recordRegistration, recordLogin, recordActivity } from "@/lib/services";
 import { generateMasterKey, deriveKeyFromPassword, bufToHex } from "@/lib/crypto";
 import { isFirebaseConfigured } from "@/lib/firebase";
 import { Shield, Sparkles, Flower, Heart, Activity, Loader2, Lock, Check, X, ArrowLeft, ArrowRight, Users, Info } from "lucide-react";
@@ -364,6 +364,7 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
       if (isLogin) {
         if (registered) {
           await recordLogin(user.uid, emailVal);
+          await recordActivity('User Logged In', user.uid, emailVal);
           onAuthSuccess(user.uid, emailVal);
         } else {
           // Auto-redirect first-time users to registration form
@@ -375,6 +376,7 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
       } else {
         if (registered) {
           await recordLogin(user.uid, emailVal);
+          await recordActivity('User Logged In', user.uid, emailVal);
           onAuthSuccess(user.uid, emailVal);
         } else {
           setUserId(user.uid);
@@ -434,6 +436,7 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
       // Record registration and initial login events in DB
       await recordRegistration(userId, userEmailAddress);
       await recordLogin(userId, userEmailAddress);
+      await recordActivity('New User Registered', userId, userEmailAddress);
 
       // Dispatch welcome email asynchronously
       fetch("/api/send-email", {
@@ -1026,16 +1029,12 @@ export default function Auth({ onAuthSuccess, initialUserId = "", initialUserEma
 
               <div className="space-y-1">
                 <label className="text-[9px] uppercase tracking-wider font-bold text-slate-700">Gender</label>
-                <select
-                  value={demoGender}
-                  onChange={(e) => setDemoGender(e.target.value)}
-                  className="w-full px-3.5 py-3 bg-cream-100/50 border border-cream-200 rounded-2xl text-xs focus:border-rose-300 focus:outline-none text-slate-800 cursor-pointer"
-                >
-                  <option value="Female">Female</option>
-                  <option value="Male">Male</option>
-                  <option value="Non-Binary">Non-Binary</option>
-                  <option value="Prefer not to say">Prefer not to say</option>
-                </select>
+                <input
+                  type="text"
+                  readOnly
+                  value="Female"
+                  className="w-full px-3.5 py-3 bg-cream-100/30 border border-cream-200 rounded-2xl text-xs text-slate-500 focus:outline-none cursor-not-allowed font-semibold"
+                />
               </div>
 
               <div className="space-y-1">
