@@ -198,16 +198,28 @@ export default function PrivacyVault({ uid, userEmail, profile, onProfileUpdate,
                   className="w-16 h-16 rounded-full object-cover border-2 border-rose-350 shadow-md"
                 />
               ) : (
-                <div className="w-16 h-16 rounded-full bg-rose-50 text-rose-400 border-2 border-rose-100 flex items-center justify-center shrink-0">
-                  <Flower className="w-9 h-9" />
+                <div className="relative group" title="Profile picture pending">
+                  <div className="w-16 h-16 rounded-full bg-rose-50 text-rose-400 border-2 border-dashed border-rose-300 flex items-center justify-center shrink-0">
+                    <Flower className="w-8 h-8 opacity-50" />
+                  </div>
+                  {/* Ping Animation Indicator */}
+                  <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-rose-500 rounded-full animate-ping opacity-75"></div>
+                  <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-rose-500 rounded-full border-2 border-white"></div>
                 </div>
               )}
               
-              <label className="text-[10px] uppercase font-extrabold tracking-wider text-rose-500 hover:text-rose-600 cursor-pointer transition-colors bg-white px-2.5 py-1 rounded-full border border-rose-100 shadow-xs">
-                {language === "hi" ? "फ़ोटो बदलें" :
-                 language === "gu" ? "ફોટો બદલો" :
-                 "Change Photo"}
-                <input 
+              <div className="flex flex-col items-center">
+                <label className={`text-[10px] uppercase font-extrabold tracking-wider cursor-pointer transition-colors bg-white px-3 py-1 rounded-full border shadow-xs flex items-center gap-1 ${profile.demographics.photoHex ? 'text-slate-500 border-slate-200 hover:text-slate-700 hover:bg-slate-50' : 'text-rose-500 border-rose-200 hover:text-rose-600 hover:bg-rose-50'}`}>
+                  {profile.demographics.photoHex ? (
+                    language === "hi" ? "फ़ोटो बदलें" :
+                    language === "gu" ? "ફોટો બદલો" :
+                    "Change Photo"
+                  ) : (
+                    language === "hi" ? "फ़ोटो अपलोड करें" :
+                    language === "gu" ? "ફોટો અપલોડ કરો" :
+                    "Upload Profile Pic"
+                  )}
+                  <input 
                   type="file" 
                   accept="image/*" 
                   onChange={async (e) => {
@@ -251,6 +263,13 @@ export default function PrivacyVault({ uid, userEmail, profile, onProfileUpdate,
                   className="hidden" 
                 />
               </label>
+              {!profile.demographics.photoHex && (
+                <span className="text-[9px] text-slate-400 font-medium bg-slate-100 px-2 py-0.5 rounded-md mt-1 border border-slate-200 shadow-sm inline-flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"></span>
+                  {language === "hi" ? "लंबित" : language === "gu" ? "બાકી છે" : "Pending"}
+                </span>
+              )}
+              </div>
             </div>
 
             {/* Profile Fields Summary */}
