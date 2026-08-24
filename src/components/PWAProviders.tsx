@@ -7,7 +7,7 @@ export default function PWAProviders({ children }: { children: React.ReactNode }
     if (typeof window === "undefined") return;
 
     // Increment this identifier whenever a new update is deployed to force-refresh returning clients
-    const CURRENT_VERSION = "aeva_v1.1.0_support_chats_and_stats";
+    const CURRENT_VERSION = "aeva_v1.1.1_admin_and_profile_fixes";
     const cachedVersion = localStorage.getItem("aeva_app_version");
 
     if (cachedVersion && cachedVersion !== CURRENT_VERSION) {
