@@ -1,4 +1,4 @@
-﻿import { auth, adminAuth, db, adminDb, isFirebaseConfigured } from "./firebase";
+import { auth, adminAuth, db, adminDb, isFirebaseConfigured } from "./firebase";
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
@@ -580,8 +580,58 @@ export async function getAllUsers(): Promise<AdminUserRecord[]> {
         });
       }
       return users;
-    } catch (e) {
-      console.warn("Error fetching all users in Admin Mode, falling back to LocalStorage:", e);
+    } catch (e: any) {
+      console.warn("Firestore SDK getDocs failed, attempting REST API diagnostic fallback:", e.message);
+      try {
+        if (adminAuth?.currentUser) {
+          const token = await adminAuth.currentUser.getIdToken();
+          const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+          const res = await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await res.json();
+          if (data.error) {
+            console.error("REST API Diagnostic ALSO failed. This proves your Firestore Rules are actively blocking the Admin account. Please verify your Rules tab in Firebase Console:", data.error);
+          } else if (data.documents) {
+            console.log("REST API Succeeded! Bypassing Firebase SDK block.");
+            const restUsers: AdminUserRecord[] = [];
+            for (const doc of data.documents) {
+              const uid = doc.name.split("/").pop();
+              // A simple parse of the Firestore REST document format
+              const profileMode = doc.fields?.profile?.mapValue?.fields?.mode?.stringValue || "cycle_sync";
+              const photoHex = doc.fields?.profile?.mapValue?.fields?.photoHex?.stringValue;
+              const pendingPhotoHex = doc.fields?.profile?.mapValue?.fields?.pendingPhotoHex?.stringValue;
+              const photoStatus = doc.fields?.profile?.mapValue?.fields?.photoStatus?.stringValue;
+              const email = doc.fields?.email?.stringValue || `${uid?.substring(0, 8)}@aeva.com`;
+              
+              const demographics = doc.fields?.profile?.mapValue?.fields?.demographics?.mapValue?.fields;
+              
+              restUsers.push({
+                uid,
+                email,
+                profile: {
+                  mode: profileMode as any,
+                  photoHex,
+                  pendingPhotoHex,
+                  photoStatus: photoStatus as any,
+                  demographics: demographics ? {
+                    name: demographics.name?.stringValue || "",
+                    city: demographics.city?.stringValue || "",
+                    country: demographics.country?.stringValue || "",
+                    mobile: demographics.mobile?.stringValue || "",
+                    gender: demographics.gender?.stringValue || ""
+                  } : undefined
+                },
+                logCount: 0 // Simplification for REST fallback
+              });
+            }
+            return restUsers;
+          }
+        }
+      } catch (restErr) {
+        console.error("REST fallback error:", restErr);
+      }
+      
       // Actual fallback logic
       let localUsers = localStorage.getItem("aeva_admin_users");
       if (!localUsers) {
@@ -841,8 +891,26 @@ export async function getRegistrationLogs(): Promise<RegistrationRecord[]> {
         list.push(d.data() as RegistrationRecord);
       });
       return list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    } catch (e) {
-      console.warn("Firestore getRegistrationLogs failed:", e);
+    } catch (e: any) {
+      console.warn("Firestore getRegistrationLogs failed:", e.message);
+      try {
+        if (adminAuth?.currentUser) {
+          const token = await adminAuth.currentUser.getIdToken();
+          const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+          const res = await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/registrations`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await res.json();
+          if (data.documents) {
+            const list: RegistrationRecord[] = data.documents.map((doc: any) => ({
+              uid: doc.fields?.uid?.stringValue,
+              email: doc.fields?.email?.stringValue,
+              timestamp: doc.fields?.timestamp?.stringValue
+            }));
+            return list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+          }
+        }
+      } catch (err) {}
     }
   }
   const list = JSON.parse(localStorage.getItem("aeva_registrations") || "[]") as RegistrationRecord[];
@@ -858,8 +926,26 @@ export async function getLoginLogs(): Promise<LoginRecord[]> {
         list.push(d.data() as LoginRecord);
       });
       return list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    } catch (e) {
-      console.warn("Firestore getLoginLogs failed:", e);
+    } catch (e: any) {
+      console.warn("Firestore getLoginLogs failed:", e.message);
+      try {
+        if (adminAuth?.currentUser) {
+          const token = await adminAuth.currentUser.getIdToken();
+          const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+          const res = await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/logins`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await res.json();
+          if (data.documents) {
+            const list: LoginRecord[] = data.documents.map((doc: any) => ({
+              uid: doc.fields?.uid?.stringValue,
+              email: doc.fields?.email?.stringValue,
+              timestamp: doc.fields?.timestamp?.stringValue
+            }));
+            return list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+          }
+        }
+      } catch (err) {}
     }
   }
   const list = JSON.parse(localStorage.getItem("aeva_logins") || "[]") as LoginRecord[];
@@ -1004,18 +1090,35 @@ export async function recordActivity(action: string, uid: string = 'guest', emai
 export async function getActivityLogs(): Promise<ActivityRecord[]> {
   if (isFirebaseConfigured && adminDb && adminAuth?.currentUser) {
     try {
-      const qSnap = await withTimeout(getDocs(collection(adminDb, 'activities')), 2000);
+      const qSnap = await withTimeout(getDocs(collection(adminDb, "activities")), 2000);
       const list: ActivityRecord[] = [];
-      qSnap.forEach((d) => {
+      qSnap.forEach(d => {
         list.push(d.data() as ActivityRecord);
       });
       return list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    } catch (e) {
-      console.warn('Firestore getActivityLogs failed:', e);
+    } catch (e: any) {
+      console.warn("Firestore getActivityLogs failed:", e.message);
+      try {
+        if (adminAuth?.currentUser) {
+          const token = await adminAuth.currentUser.getIdToken();
+          const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+          const res = await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/activities`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await res.json();
+          if (data.documents) {
+            const list: ActivityRecord[] = data.documents.map((doc: any) => ({
+              uid: doc.fields?.uid?.stringValue,
+              email: doc.fields?.email?.stringValue,
+              action: doc.fields?.action?.stringValue,
+              timestamp: doc.fields?.timestamp?.stringValue
+            }));
+            return list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+          }
+        }
+      } catch (err) {}
     }
   }
-  const list = JSON.parse(localStorage.getItem('aeva_activities') || '[]') as ActivityRecord[];
+  const list = JSON.parse(localStorage.getItem("aeva_activities") || "[]") as ActivityRecord[];
   return list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 }
-
-
