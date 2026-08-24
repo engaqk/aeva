@@ -345,6 +345,9 @@ export default function AdminPanel() {
             <p style="font-size: 13px; color: #475569; margin: 8px 0;"><strong>🥑 Nutrition Sync:</strong> ${activeTemplate.nutrition}</p>
             <p style="font-size: 13px; color: #475569; margin: 8px 0;"><strong>🎯 Focus Sync:</strong> ${activeTemplate.focus}</p>
           </div>
+          <div style="text-align: center; margin: 25px 0;">
+            <a href="https://aeva-nine.vercel.app" style="background-color: #db2777; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 14px;">Open Aeva App</a>
+          </div>
           <p style="font-size: 11px; color: #64748b; text-align: center; margin-top: 30px;">
             This sync notification was dispatched from Aeva Admin Console. Client biometrics records are encrypted zero-knowledge.
           </p>
